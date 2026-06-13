@@ -65,37 +65,38 @@ try {
 
 }
 
-function guardarDirecciones(data) {
-function cargarFormacion() {
+function cargarPolicias() {
 
     try {
 
         return JSON.parse(
             fs.readFileSync(
-                './database/formacion.json',
+                './database/policias.json',
                 'utf8'
             )
         )
 
     } catch {
 
-        return {
-            entrante: {},
-            saliente: {}
-        }
-
+        return [
+            'Sgto. 2.° Gavilanes Roger',
+            'Policía Guamán Lucas',
+            'Policía Martínez Josué'
+        ]
     }
 
 }
 
-function guardarFormacion(data) {
+function guardarPolicias(data) {
 
     fs.writeFileSync(
-        './database/formacion.json',
+        './database/policias.json',
         JSON.stringify(data, null, 2)
     )
 
 }
+
+function guardarDirecciones(data) {
     fs.writeFileSync(
         './database/direcciones.json',
         JSON.stringify(data, null, 2)
@@ -199,12 +200,22 @@ function obtenerSaludo() {
 
 function obtenerJornadaAutomatica() {
 
-    const hora =
-        new Date().getHours()
+    const ahora =
+        new Date()
 
+    const hora =
+        ahora.getHours()
+
+    const minutos =
+        ahora.getMinutes()
+
+    const totalMinutos =
+        (hora * 60) + minutos
+
+    // 06:00 - 14:30
     if (
-        hora >= 6 &&
-        hora < 14
+        totalMinutos >= 360 &&
+        totalMinutos <= 870
     ) {
 
         return {
@@ -213,9 +224,10 @@ function obtenerJornadaAutomatica() {
         }
     }
 
+    // 14:31 - 22:30
     if (
-        hora >= 14 &&
-        hora < 22
+        totalMinutos >= 871 &&
+        totalMinutos <= 1350
     ) {
 
         return {
@@ -224,6 +236,7 @@ function obtenerJornadaAutomatica() {
         }
     }
 
+    // 22:31 - 05:59
     return {
         jornada: 'AMANECIDA',
         horario: '22:00 A 06:30'
@@ -278,7 +291,7 @@ ${datos.movil}
 *REPORTA*:
 *CP:* ${datos.cp}
 *JP:* ${datos.jp}
-${datos.policia !== 'No' ? `*POLICIA:* ${datos.policia}` : ''}
+${datos.policia ? `*POLICIA:* ${datos.policia}` : ''}
 
 *"Lealtad, Valor y Orden"*
 
@@ -345,12 +358,13 @@ const jornadaActual =
         String(datos.operativos)
             .padStart(2, '0')
 
-    const bloquePolicia =
-        datos.policias.length > 0
-            ? `\n${String(datos.policias.length).padStart(2, '0')} Personal Policial\n${datos.policias.join('\n')}`
-            : ''
+const bloquePolicia =
+    datos.policias &&
+    datos.policias.length > 0
+        ? `\n${String(datos.policias.length).padStart(2, '0')} Personal Policial\n${datos.policias.join('\n')}`
+        : ''
 
-    const moviles =
+            const moviles =
         datos.moviles.join('-')
 
     const reporta =
@@ -452,37 +466,46 @@ ${reporta}
 *FECHA:* ${obtenerFecha()}
 
 *OPERATIVOS*
-TOTAL: ${String(datos.operativos).padStart(2,'0')}
+TOTAL: ${String(datos.operativos || 0).padStart(2,'0')}
 
 *REQUERIMIENTOS*
-TOTAL: ${String(datos.requerimientos).padStart(2,'0')}
-
-*LEVANTAMIENTOS DE INDIGENTES*
-TOTAL: ${String(datos.indigentes).padStart(2,'0')}
-
-*RESCATE ANIMAL*
-TOTAL: ${String(datos.rescateAnimal).padStart(2,'0')}
-
-*COLABORACIÓN CON OTRAS INSTITUCIONES*
-TOTAL: ${String(datos.colaboracionInstituciones).padStart(2,'0')}
-
-*RETENIDOS*
-TOTAL: ${String(datos.retenidos).padStart(2,'0')}
+TOTAL: ${String(datos.requerimientos || 0).padStart(2,'0')}
 
 *RETIROS TEMPORALES*
-TOTAL: ${String(datos.retirosTemporales).padStart(2,'0')}
+TOTAL: ${String(datos.retirosTemporales || 0).padStart(2,'0')}
+
+*LEVANTAMIENTOS DE INDIGENTES*
+TOTAL: ${String(datos.indigentes || 0).padStart(2,'0')}
+
+*RETENIDOS*
+TOTAL: ${String(datos.retenidos || 0).padStart(2,'0')}
+
+*RESCATE ANIMAL*
+TOTAL: ${String(datos.rescateAnimal || 0).padStart(2,'0')}
 
 *RETIRO DE COVACHAS*
-TOTAL: ${String(datos.retiroCovachas).padStart(2,'0')}
+TOTAL: ${String(datos.retiroCovachas || 0).padStart(2,'0')}
 
-*ARMA BLANCA O FUEGO*
-TOTAL: ${String(datos.armaBlancaFuego).padStart(2,'0')}
+*ACM HERIDOS*
+TOTAL: ${String(datos.acmHeridos || 0).padStart(2,'0')}
 
-*COLABORACIÓN ATM*
-TOTAL: ${String(datos.colaboracionAtm).padStart(2,'0')}
+*RUIDOS MOLESTOS*
+TOTAL: ${String(datos.ruidosMolestos || 0).padStart(2,'0')}
+
+*MALA DISPOSICIÓN DE BASURA*
+TOTAL: ${String(datos.malaDisposicionBasura || 0).padStart(2,'0')}
 
 *ATENCIÓN PARAMÉDICA*
-TOTAL: ${String(datos.atencionParamedica).padStart(2,'0')}`
+TOTAL: ${String(datos.atencionParamedica || 0).padStart(2,'0')}
+
+*DESALOJOS DE LIBADORES CONSUMIDORES*
+TOTAL: ${String(datos.desalojosLibadores || 0).padStart(2,'0')}
+
+*COLABORACIÓN CON OTRAS INSTITUCIONES*
+TOTAL: ${String(datos.colaboracionInstituciones || 0).padStart(2,'0')}
+
+*NOTIFICACIÓN / COORDINACIÓN POR MALA DISPOSICIÓN DE DESECHOS*
+TOTAL: ${String(datos.notificacionDesechos || 0).padStart(2,'0')}`
 
     await sock.sendMessage(
         usuario,
@@ -494,7 +517,456 @@ TOTAL: ${String(datos.atencionParamedica).padStart(2,'0')}`
 }
 
 // ======================
-// BOT
+// GENERADOR CONSOLIDADO MOVIL
+// ======================
+
+async function generarConsolidadoMovil(
+    sock,
+    usuario
+) {
+
+    const usuarios =
+        cargarUsuarios()
+
+    const datos =
+        usuarios[usuario]
+
+    if (!datos) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'❌ No existen datos guardados para generar el consolidado.'
+            }
+        )
+
+        return
+    }
+
+    const estado =
+        estados[usuario]
+
+    let jp =
+        datos.jp
+
+    let cp =
+        datos.cp
+
+    let auxiliar =
+        estado.auxiliar
+
+    if (datos.policia) {
+
+        auxiliar =
+            datos.jp
+
+        jp =
+            datos.policia
+    }
+
+    const bloqueAuxiliar =
+        auxiliar
+            ? `*Aux:* ${auxiliar}\n`
+            : ''
+
+            const cantidades =
+`*OPERATIVOS*
+TOTAL: ${String(estado.cantidadesMovil?.operativos || 0).padStart(2,'0')}
+
+*REQUERIMIENTOS*
+TOTAL: ${String(estado.cantidadesMovil?.requerimientos || 0).padStart(2,'0')}
+
+*RETIROS TEMPORALES*
+TOTAL: ${String(estado.cantidadesMovil?.retirosTemporales || 0).padStart(2,'0')}
+
+*LEVANTAMIENTOS DE INDIGENTES*
+TOTAL: ${String(estado.cantidadesMovil?.indigentes || 0).padStart(2,'0')}
+
+*RETENIDOS*
+TOTAL: ${String(estado.cantidadesMovil?.retenidos || 0).padStart(2,'0')}
+
+*RESCATE ANIMAL*
+TOTAL: ${String(estado.cantidadesMovil?.rescateAnimal || 0).padStart(2,'0')}
+
+*RETIRO DE COVACHA*
+TOTAL: ${String(estado.cantidadesMovil?.retiroCovachas || 0).padStart(2,'0')}
+
+*ACM HERIDOS*
+TOTAL: ${String(estado.cantidadesMovil?.acmHeridos || 0).padStart(2,'0')}
+
+*RUIDOS MOLESTOS*
+TOTAL: ${String(estado.cantidadesMovil?.ruidosMolestos || 0).padStart(2,'0')}
+
+*MALA DISPOSICION DE BASURA*
+TOTAL: ${String(estado.cantidadesMovil?.malaDisposicionBasura || 0).padStart(2,'0')}
+
+*ATENCIÓN PARAMÉDICA*
+TOTAL: ${String(estado.cantidadesMovil?.atencionParamedica || 0).padStart(2,'0')}
+
+*DESALOJOS DE LIBADORES CONSUMIDORES*
+TOTAL: ${String(estado.cantidadesMovil?.desalojosLibadores || 0).padStart(2,'0')}
+
+*COLABORACIÓN CON OTRA INSTITUCIONES*
+TOTAL: ${String(estado.cantidadesMovil?.colaboracionInstituciones || 0).padStart(2,'0')}
+
+*NOTIFICACION / COORDINACION POR MALA DISPOSICION DE DESECHOS*
+TOTAL: ${String(estado.cantidadesMovil?.notificacionDesechos || 0).padStart(2,'0')}`
+
+    const novedadesFinal =
+    estado.novedadesExtra
+        ? estado.novedadesExtra
+        : 'Sin novedades'
+
+    const consolidado =
+`*CONSOLIDADO CIRCUITO EAS CEIBOS*
+
+*AGENTES ENCARGADOS:*
+*JP:* ${jp}
+*COND:* ${cp}
+${bloqueAuxiliar}*MOVIL:* ${datos.movil}
+*KILO:* ${estado.kilo}
+*GOLFO:* ${estado.golfo}
+
+*FECHA:* ${obtenerFecha()}
+
+${cantidades}
+
+*NOVEDADES:*
+${novedadesFinal}`
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text: consolidado
+        }
+    )
+}
+
+// ======================
+// PREGUNTAS INCIDENCIA
+// ======================
+
+async function enviarPregInc(
+    sock,
+    usuario
+) {
+
+    const inc =
+        estados[usuario].inc
+
+    const preguntas = {
+        'ROBO A MANO ARMADA': [
+            ['bienes', 'Indique qué bienes le robaron:'],
+            ['valor', 'Indique el valor total de los bienes robados:']
+        ],
+
+        'PERDIDA DE BIEN INMUEBLE': [
+            ['bienes', 'Indique qué bienes se perdieron:'],
+            ['valor', 'Indique el valor total de los bienes perdidos:']
+        ],
+
+        'EXTORSION A LOCAL': [
+            ['local', 'Ingrese el nombre del local comercial:'],
+            ['refLocal', 'Ingrese una referencia del local:'],
+            ['motivo', 'Indique por qué motivo es la extorsión:']
+        ],
+
+        'AMENAZAS': [
+            ['amenazaNom', 'Ingrese el nombre de la persona que está amenazando:'],
+            ['amenazaCed', 'Ingrese la cédula de la persona que está amenazando:'],
+            ['textoAmenaza', 'Ingrese la frase o texto que indica que fue una amenaza:']
+        ],
+
+        'DESAPARICION DE PERSONA': [
+            ['desapNom', 'Ingrese el nombre de la persona desaparecida:'],
+            ['ultimaVez', 'Ingrese la ubicación donde fue vista por última vez:'],
+            ['desapCed', 'Ingrese la cédula de la persona desaparecida:'],
+            ['vestimenta', 'Indique la vestimenta o accesorios que llevaba:'],
+            ['antecedente', 'Indique si hubo algún antecedente de amenaza anterior o no:']
+        ],
+
+        'SECTOR O NICHO CONFLICTIVO': [
+            ['motivoConf', 'Indique el motivo por el cual el sector es conflictivo:'],
+            ['requiere', 'Indique qué requiere el ciudadano denunciante:']
+        ],
+
+        'AGRESION': [
+            ['agresor', 'Ingrese el nombre del agresor:'],
+            ['objeto', 'Indique el objeto con el que agredió:'],
+            ['detalleHerida', 'Detalle cómo el objeto provocó la herida y en qué parte:']
+        ],
+
+        'VISUALIZAR CAMARAS': [
+    [
+        'motivoCam',
+        'Describa el motivo de la visualización de cámaras:'
+    ]
+],
+
+'COLABORACION EN EVENTO': [
+    [
+        'evento',
+        'Ingrese el nombre del evento:'
+    ],
+    [
+        'horaEvento',
+        'Ingrese la hora del evento:'
+    ],
+    [
+        'fechaEvento',
+        'Ingrese la fecha del evento:'
+    ],
+    [
+        'motivoEvento',
+        'Describa el motivo de la colaboración:'
+    ]
+],
+
+'RESGUARDO DE PERSONAL': [
+    [
+        'motivoResguardo',
+        'Indique el motivo del resguardo:'
+    ]
+],
+
+'COLABORACION DE ATM': [
+    [
+        'motivoAtm',
+        'Indique el motivo de la presencia de ATM:'
+    ]
+],
+
+    }
+
+    inc.preguntas =
+        preguntas[inc.tipo]
+
+    inc.i =
+        0
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+                inc.preguntas[0][1]
+        }
+    )
+}
+
+// ======================
+// GENERAR INCIDENCIA EAS
+// ======================
+
+async function genIncEas(
+    sock,
+    usuario
+) {
+
+    const estado =
+        estados[usuario]
+
+    const inc =
+        estado.inc
+
+    const formaciones =
+        cargarFormaciones()
+
+    const datosFormacion =
+        formaciones[usuario]
+
+    const jornadaActual =
+        obtenerJornadaAutomatica()
+
+    const reporta =
+        datosFormacion?.radioOperadores?.length
+            ? datosFormacion.radioOperadores
+                .map(nombre => `ACM. ${nombre}`)
+                .join('\n')
+            : 'No registra radioperadores'
+
+    let relato = ''
+
+    if (inc.tipo === 'ROBO A MANO ARMADA') {
+
+        relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS debido a un caso de robo a mano armada suscitado en ${inc.lugar}.
+
+El ciudadano manifiesta que le fueron sustraídos los siguientes bienes: ${inc.bienes}. Asimismo, indica que el valor aproximado de los bienes robados asciende a ${inc.valor}.`
+    }
+
+if (
+    inc.tipo ===
+    'PERDIDA DE BIEN INMUEBLE'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS debido a la pérdida de bienes ocurrida en ${inc.lugar}.
+
+El ciudadano manifiesta haber extraviado los siguientes bienes: ${inc.bienes}. Asimismo, indica que el valor aproximado de los bienes perdidos asciende a ${inc.valor}.`
+}
+
+if (
+    inc.tipo ===
+    'EXTORSION A LOCAL'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS debido a una presunta extorsión a local comercial, suscitada en ${inc.lugar}.
+
+El ciudadano manifiesta que el local comercial denominado ${inc.local}, ubicado como referencia en ${inc.refLocal}, estaría siendo objeto de presunta extorsión por el siguiente motivo: ${inc.motivo}.`
+}
+
+if (
+    inc.tipo ===
+    'AMENAZAS'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS debido a una presunta amenaza suscitada en ${inc.lugar}.
+
+El ciudadano manifiesta estar siendo víctima de amenazas por parte de ${inc.amenazaNom}, portador de la cédula de ciudadanía No. ${inc.amenazaCed}, quien presuntamente habría expresado el siguiente texto o frase intimidatoria:
+
+"${inc.textoAmenaza}"
+
+Por lo expuesto, el ciudadano solicita que se deje constancia de lo manifestado para los fines correspondientes.`
+}
+
+if (
+    inc.tipo ===
+    'DESAPARICION DE PERSONA'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS debido a la desaparición de una persona.
+
+El ciudadano manifiesta que la persona desaparecida responde a los nombres de ${inc.desapNom}, con cédula de ciudadanía No. ${inc.desapCed}, quien fue vista por última vez en ${inc.ultimaVez}. Asimismo, indica que al momento de su desaparición vestía o portaba lo siguiente: ${inc.vestimenta}.
+
+Respecto a antecedentes de amenazas anteriores, el ciudadano indica: ${inc.antecedente}.`
+}
+
+if (
+    inc.tipo ===
+    'SECTOR O NICHO CONFLICTIVO'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS para informar una novedad relacionada con un sector conflictivo ubicado en ${inc.lugar}.
+
+El ciudadano manifiesta que el sector presenta la siguiente problemática: ${inc.motivoConf}.
+
+Asimismo, solicita lo siguiente por parte de las autoridades competentes: ${inc.requiere}.`
+}
+
+if (
+    inc.tipo ===
+    'AGRESION'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS debido a una presunta agresión suscitada en ${inc.lugar}.
+
+El ciudadano manifiesta que fue agredido por ${inc.agresor}, quien habría utilizado ${inc.objeto} para ocasionar la lesión.
+
+De acuerdo con lo manifestado, la agresión se produjo de la siguiente manera: ${inc.detalleHerida}.`
+}
+
+if (
+    inc.tipo ===
+    'VISUALIZAR CAMARAS'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS solicitando la visualización de cámaras por una novedad suscitada en ${inc.lugar}.
+
+El ciudadano manifiesta que requiere la revisión del sistema de videovigilancia debido a lo siguiente: ${inc.motivoCam}.`
+}
+
+if (
+    inc.tipo ===
+    'COLABORACION EN EVENTO'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS solicitando colaboración institucional para un evento a desarrollarse en ${inc.lugar}.
+
+El ciudadano informa que el evento denominado ${inc.evento} se llevará a cabo el día ${inc.fechaEvento} a las ${inc.horaEvento}, indicando que la colaboración es requerida debido a: ${inc.motivoEvento}.`
+}
+
+if (
+    inc.tipo ===
+    'RESGUARDO DE PERSONAL'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS solicitando resguardo de personal en ${inc.lugar}.
+
+El ciudadano manifiesta que requiere el acompañamiento o resguardo respectivo debido a: ${inc.motivoResguardo}.`
+}
+
+if (
+    inc.tipo ===
+    'COLABORACION DE ATM'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que al momento se acerca el ciudadano ${inc.nombre}, con cédula de ciudadanía No. ${inc.cedula} y número de celular ${inc.celular}, a la base EAS CEIBOS solicitando colaboración de ATM en ${inc.lugar}.
+
+El ciudadano manifiesta que requiere la presencia de personal de ATM debido a: ${inc.motivoAtm}.`
+}
+
+if (
+    inc.tipoP ===
+    'NOVEDADES EN EAS CEIBOS'
+) {
+
+    relato =
+`Muy respetuosamente me permito informarle que en las instalaciones de EAS CEIBOS se registra la siguiente novedad:
+
+${inc.detalle}`
+}
+
+    const cartilla =
+`*CUERPO AGENTE DE CONTROL MUNICIPAL*
+*REPORTE DE RADIOOPERADORES EAS CEIBOS*
+
+*Distrito:* #5 MODELO
+*Circuito:* EAS 12 CEIBOS
+*Dirección:* Calle 15 ava y Dr Alberto Dacach Saman
+*Horario:* ${jornadaActual.horario}
+*Hora:* ${obtenerHoraMas5()}
+*Fecha:* ${obtenerFecha()}
+*Causa:* ${
+    inc.tipo
+        ? `${inc.tipoP} - ${inc.tipo}`
+        : inc.tipoP
+}
+
+${obtenerSaludo()}, permiso Sr. Maldonado Cabrera Freddy Jefe de Control Municipal.
+
+${relato}
+
+Así mismo, se le informó a la Central para que registre la novedad.
+
+Información puesta en conocimiento para los fines pertinentes.
+
+*Reporta:*
+${reporta}
+
+*"Lealtad Valor Orden"*
+
+*Adjunto Fotografía:*`
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text: cartilla
+        }
+    )
+}
+
+// ======================
+// STARTBOT
 // ======================
 
 async function startBot() {
@@ -631,8 +1103,12 @@ console.log(
 // ======================
 if (
     mensaje === 'hola' ||
-    mensaje === 'menu'
+    mensaje === 'menu' ||
+    mensaje === 'menú' ||
+    mensaje === '.'
 ) {
+
+    delete estados[usuario]
 
     await sock.sendMessage(
         usuario,
@@ -642,8 +1118,8 @@ if (
 
 Seleccione una opción:
 
-a) Cartillas
-b) Formación
+a) Cartillas de novedades
+b) Radioperadores
 c) Consolidado
 d) Restart`
         }
@@ -671,19 +1147,20 @@ if (
 ) {
 
     estados[usuario] = {
-        paso: 'menu_formacion'
+        paso: 'menu_radioperadores'
     }
 
     await sock.sendMessage(
         usuario,
         {
             text:
-`📡 FORMACIÓN
+`📡 RADIOOPERADORES
 
 a) Formación Entrante
 b) Formación Saliente
 c) Datos Guardados
-d) Volver`
+d) Cartillas Incidencia EAS
+e) Volver`
         }
     )
 
@@ -709,15 +1186,18 @@ if (
         consolidado: {
             operativos: 0,
             requerimientos: 0,
-            indigentes: 0,
-            rescateAnimal: 0,
-            colaboracionInstituciones: 0,
-            retenidos: 0,
             retirosTemporales: 0,
+            indigentes: 0,
+            retenidos: 0,
+            rescateAnimal: 0,
             retiroCovachas: 0,
-            armaBlancaFuego: 0,
-            colaboracionAtm: 0,
-            atencionParamedica: 0
+            acmHeridos: 0,
+            ruidosMolestos: 0,
+            malaDisposicionBasura: 0,
+            atencionParamedica: 0,
+            desalojosLibadores: 0,
+            colaboracionInstituciones: 0,
+            notificacionDesechos: 0
         }
     }
 
@@ -727,24 +1207,14 @@ if (
             text:
 `📊 CONSOLIDADO
 
-Seleccione una opción:
+Seleccione el tipo de consolidado:
 
-a) Operativos
-b) Requerimientos
-c) Levantamientos de indigentes
-d) Rescate animal
-e) Colaboración con otras instituciones
-f) Retenidos
-g) Retiros temporales
-h) Retiro de covachas
-i) Arma blanca o fuego
-j) Colaboración ATM
-k) Atención paramédica
-l) Finalizar consolidado`
+a) Consolidado de radioperadores
+b) Consolidado de móvil`
         }
     )
-
     return
+
 }
 
 // ======================
@@ -752,7 +1222,8 @@ l) Finalizar consolidado`
 // ======================
 
 if (
-    mensaje === '/restart'
+    mensaje === '/restart' ||
+    mensaje === 'clear'
 ) {
 
     // BORRAR ESTADO TEMPORAL
@@ -881,21 +1352,95 @@ if (
     'menu_consolidado'
 ) {
 
+    if (mensaje === 'a') {
+
+        estados[usuario].paso =
+            'menu_consolidado_radioperadores'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Seleccione el dato a registrar:
+
+a) Operativos
+b) Requerimientos
+c) Retiros temporales
+d) Levantamientos de indigentes
+e) Retenidos
+f) Rescate animal
+g) Retiro de covachas
+h) ACM heridos
+i) Ruidos molestos
+j) Mala disposición de basura
+k) Atención paramédica
+l) Desalojos de libadores consumidores
+m) Colaboración con otras instituciones
+n) Notificación / coordinación por mala disposición de desechos
+o) Finalizar consolidado`
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === 'b') {
+
+        estados[usuario].paso =
+            'consolidado_movil_kilo'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Ingrese el kilometraje del móvil:'
+            }
+        )
+
+        return
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Seleccione el tipo de consolidado:
+
+a) Consolidado de radioperadores
+b) Consolidado de móvil`
+        }
+    )
+
+    return
+}
+
+// ======================
+// MENU CONSOLIDADO RADIOPERADORES
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'menu_consolidado_radioperadores'
+) {
+
     const opciones = {
         a: 'operativos',
         b: 'requerimientos',
-        c: 'indigentes',
-        d: 'rescateAnimal',
-        e: 'colaboracionInstituciones',
-        f: 'retenidos',
-        g: 'retirosTemporales',
-        h: 'retiroCovachas',
-        i: 'armaBlancaFuego',
-        j: 'colaboracionAtm',
-        k: 'atencionParamedica'
+        c: 'retirosTemporales',
+        d: 'indigentes',
+        e: 'retenidos',
+        f: 'rescateAnimal',
+        g: 'retiroCovachas',
+        h: 'acmHeridos',
+        i: 'ruidosMolestos',
+        j: 'malaDisposicionBasura',
+        k: 'atencionParamedica',
+        l: 'desalojosLibadores',
+        m: 'colaboracionInstituciones',
+        n: 'notificacionDesechos'
     }
 
-    if (mensaje === 'l') {
+    if (mensaje === 'o') {
 
         await generarConsolidado(
             sock,
@@ -917,16 +1462,19 @@ if (
 
 a) Operativos
 b) Requerimientos
-c) Levantamientos de indigentes
-d) Rescate animal
-e) Colaboración con otras instituciones
-f) Retenidos
-g) Retiros temporales
-h) Retiro de covachas
-i) Arma blanca o fuego
-j) Colaboración ATM
+c) Retiros temporales
+d) Levantamientos de indigentes
+e) Retenidos
+f) Rescate animal
+g) Retiro de covachas
+h) ACM heridos
+i) Ruidos molestos
+j) Mala disposición de basura
 k) Atención paramédica
-l) Finalizar consolidado`
+l) Desalojos de libadores consumidores
+m) Colaboración con otras instituciones
+n) Notificación / coordinación por mala disposición de desechos
+o) Finalizar consolidado`
             }
         )
 
@@ -982,12 +1530,20 @@ if (
         estados[usuario]
             .campoConsolidado
 
+    if (!estados[usuario].consolidado) {
+        estados[usuario].consolidado = {}
+    }
+
+    if (!estados[usuario].consolidado[campo]) {
+        estados[usuario].consolidado[campo] = 0
+    }
+
     estados[usuario]
         .consolidado[campo] +=
         cantidad
 
     estados[usuario].paso =
-        'menu_consolidado'
+        'menu_consolidado_radioperadores'
 
     await sock.sendMessage(
         usuario,
@@ -999,16 +1555,19 @@ Seleccione una opción:
 
 a) Operativos
 b) Requerimientos
-c) Levantamientos de indigentes
-d) Rescate animal
-e) Colaboración con otras instituciones
-f) Retenidos
-g) Retiros temporales
-h) Retiro de covachas
-i) Arma blanca o fuego
-j) Colaboración ATM
+c) Retiros temporales
+d) Levantamientos de indigentes
+e) Retenidos
+f) Rescate animal
+g) Retiro de covachas
+h) ACM heridos
+i) Ruidos molestos
+j) Mala disposición de basura
 k) Atención paramédica
-l) Finalizar consolidado`
+l) Desalojos de libadores consumidores
+m) Colaboración con otras instituciones
+n) Notificación / coordinación por mala disposición de desechos
+o) Finalizar consolidado`
         }
     )
 
@@ -1016,7 +1575,1039 @@ l) Finalizar consolidado`
 }
 
 // ======================
-// MENU FORMACION
+// CONSOLIDADO MOVIL KILO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'consolidado_movil_kilo'
+) {
+
+    estados[usuario].kilo =
+        text
+
+    estados[usuario].paso =
+        'consolidado_movil_golfo'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Seleccione nivel del tanque de combustible:
+
+a) 1/4
+b) 1/2
+c) 3/4
+d) FULL`
+        }
+    )
+
+    return
+}
+
+// ======================
+// CONSOLIDADO MOVIL GOLFO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'consolidado_movil_golfo'
+) {
+
+    let golfo = ''
+
+    if (mensaje === 'a') {
+        golfo = '1/4'
+    }
+
+    else if (mensaje === 'b') {
+        golfo = '1/2'
+    }
+
+    else if (mensaje === 'c') {
+        golfo = '3/4'
+    }
+
+    else if (mensaje === 'd') {
+        golfo = 'FULL'
+    }
+
+    else {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Opción inválida.
+
+Seleccione nivel del tanque de combustible:
+
+a) 1/4
+b) 1/2
+c) 3/4
+d) FULL`
+            }
+        )
+
+        return
+    }
+
+    estados[usuario].golfo =
+        golfo
+
+    estados[usuario].paso =
+        'consolidado_movil_auxiliar'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Hubo auxiliar?
+
+a) Sí
+b) No`
+        }
+    )
+
+    return
+}
+
+// ======================
+// CONSOLIDADO MOVIL AUXILIAR
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'consolidado_movil_auxiliar'
+) {
+
+    if (
+        mensaje === 'a' ||
+        mensaje === 'si' ||
+        mensaje === 'sí'
+    ) {
+
+        estados[usuario].paso =
+            'consolidado_movil_nombre_auxiliar'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Ingrese el nombre del auxiliar:'
+            }
+        )
+
+        return
+    }
+
+    if (
+        mensaje === 'b' ||
+        mensaje === 'no'
+    ) {
+
+        estados[usuario].auxiliar =
+            ''
+
+       if (!estados[usuario].cantidadesMovil) {
+
+    estados[usuario].cantidadesMovil = {
+        operativos: 0,
+        requerimientos: 0,
+        retirosTemporales: 0,
+        indigentes: 0,
+        retenidos: 0,
+        rescateAnimal: 0,
+        retiroCovachas: 0,
+        acmHeridos: 0,
+        ruidosMolestos: 0,
+        malaDisposicionBasura: 0,
+        atencionParamedica: 0,
+        desalojosLibadores: 0,
+        colaboracionInstituciones: 0,
+        notificacionDesechos: 0
+    }
+
+}
+
+estados[usuario].paso =
+    'menu_consolidado_movil'
+
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`📊 CONSOLIDADO MOVIL
+
+Seleccione una opción:
+
+a) Operativos
+b) Requerimientos
+c) Retiros temporales
+d) Levantamientos de indigentes
+e) Retenidos
+f) Rescate animal
+g) Retiro de covachas
+h) ACM heridos
+i) Ruidos molestos
+j) Mala disposición de basura
+k) Atención paramédica
+l) Desalojos de libadores consumidores
+m) Colaboración con otras instituciones
+n) Notificación / coordinación por mala disposición de desechos
+o) Finalizar consolidado`
+    }
+)
+return
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Opción inválida.
+
+a) Sí
+b) No`
+        }
+    )
+
+    return
+}
+
+// ======================
+// CONSOLIDADO MOVIL NOMBRE AUXILIAR
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'consolidado_movil_nombre_auxiliar'
+) {
+
+    estados[usuario].auxiliar =
+        text
+
+        if (!estados[usuario].cantidadesMovil) {
+
+    estados[usuario].cantidadesMovil = {
+        operativos: 0,
+        requerimientos: 0,
+        retirosTemporales: 0,
+        indigentes: 0,
+        retenidos: 0,
+        rescateAnimal: 0,
+        retiroCovachas: 0,
+        acmHeridos: 0,
+        ruidosMolestos: 0,
+        malaDisposicionBasura: 0,
+        atencionParamedica: 0,
+        desalojosLibadores: 0,
+        colaboracionInstituciones: 0,
+        notificacionDesechos: 0
+    }
+
+}
+
+estados[usuario].paso =
+    'menu_consolidado_movil'
+
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`📊 CONSOLIDADO MOVIL
+
+Seleccione una opción:
+
+a) Operativos
+b) Requerimientos
+c) Retiros temporales
+d) Levantamientos de indigentes
+e) Retenidos
+f) Rescate animal
+g) Retiro de covachas
+h) ACM heridos
+i) Ruidos molestos
+j) Mala disposición de basura
+k) Atención paramédica
+l) Desalojos de libadores consumidores
+m) Colaboración con otras instituciones
+n) Notificación / coordinación por mala disposición de desechos
+o) Finalizar consolidado`
+    }
+)
+
+return
+
+    }
+
+// ======================
+// MENU CONSOLIDADO MOVIL
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'menu_consolidado_movil'
+) {
+
+    const opciones = {
+        a: 'operativos',
+        b: 'requerimientos',
+        c: 'retirosTemporales',
+        d: 'indigentes',
+        e: 'retenidos',
+        f: 'rescateAnimal',
+        g: 'retiroCovachas',
+        h: 'acmHeridos',
+        i: 'ruidosMolestos',
+        j: 'malaDisposicionBasura',
+        k: 'atencionParamedica',
+        l: 'desalojosLibadores',
+        m: 'colaboracionInstituciones',
+        n: 'notificacionDesechos'
+    }
+
+    if (mensaje === 'o') {
+
+        estados[usuario].paso =
+            'consolidado_movil_agregar_novedad'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`¿Desea agregar novedades?
+
+a) Sí
+b) No`
+            }
+        )
+
+        return
+    }
+
+    if (!opciones[mensaje]) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Opción inválida.
+
+a) Operativos
+b) Requerimientos
+c) Retiros temporales
+d) Levantamientos de indigentes
+e) Retenidos
+f) Rescate animal
+g) Retiro de covachas
+h) ACM heridos
+i) Ruidos molestos
+j) Mala disposición de basura
+k) Atención paramédica
+l) Desalojos de libadores consumidores
+m) Colaboración con otras instituciones
+n) Notificación / coordinación por mala disposición de desechos
+o) Finalizar consolidado`
+            }
+        )
+
+        return
+    }
+
+    estados[usuario].campoConsolidadoMovil =
+        opciones[mensaje]
+
+    estados[usuario].paso =
+        'cantidad_consolidado_movil'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Ingrese la cantidad a registrar'
+        }
+    )
+
+    return
+}
+
+// ======================
+// MENU RADIOPERADORES
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'menu_radioperadores'
+) {
+
+    if (
+        mensaje === 'a' ||
+        mensaje === 'b' ||
+        mensaje === 'c'
+    ) {
+
+        estados[usuario].paso =
+            'menu_formacion'
+
+    }
+
+    else if (mensaje === 'd') {
+
+        estados[usuario] = {
+            paso: 'inc_eas_menu',
+            inc: {}
+        }
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`*CARTILLAS INCIDENCIA EAS*
+
+a) Denuncias Ciudadanas
+b) Requerimientos Ciudadanos
+c) Incidencias del EAS
+d) Volver`
+            }
+        )
+
+        return
+    }
+
+    else if (mensaje === 'e') {
+
+        delete estados[usuario]
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Escriba MENU para volver al menú principal'
+            }
+        )
+
+        return
+    }
+
+    else {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Opción inválida.
+
+a) Formación Entrante
+b) Formación Saliente
+c) Datos Guardados
+d) Cartillas Incidencia EAS
+e) Volver`
+            }
+        )
+
+        return
+    }
+}
+
+// ======================
+// MENU INCIDENCIA EAS
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'inc_eas_menu'
+) {
+
+    if (mensaje === 'a') {
+
+        estados[usuario].inc = {
+            tipoP:
+                'DENUNCIAS CIUDADANAS'
+        }
+
+        estados[usuario].paso =
+            'inc_den_menu'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`*DENUNCIAS CIUDADANAS*
+
+a) Robo a mano armada
+b) Pérdida de bien inmueble
+c) Extorsión a local
+d) Amenazas
+e) Desaparición de persona
+f) Sector o nicho conflictivo
+g) Agresión`
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === 'b') {
+
+        estados[usuario].inc = {
+            tipoP:
+                'REQUERIMIENTOS CIUDADANOS'
+        }
+
+        estados[usuario].paso =
+            'inc_req_menu'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`*REQUERIMIENTOS CIUDADANOS*
+
+a) Visualizar cámaras
+b) Colaboración en evento
+c) Resguardo de personal
+d) Colaboración de ATM`
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === 'c') {
+
+        estados[usuario].inc = {
+            tipoP:
+                'NOVEDADES EN EAS CEIBOS'
+        }
+
+        estados[usuario].paso =
+            'inc_eas_det'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Describa el motivo de la novedad:'
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === 'd') {
+
+        estados[usuario] = {
+            paso:
+                'menu_radioperadores'
+        }
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`📡 RADIOOPERADORES
+
+a) Formación Entrante
+b) Formación Saliente
+c) Datos Guardados
+d) Cartillas Incidencia EAS
+e) Volver`
+            }
+        )
+
+        return
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Opción inválida.
+
+a) Denuncias Ciudadanas
+b) Requerimientos Ciudadanos
+c) Incidencias del EAS
+d) Volver`
+        }
+    )
+
+    return
+}
+
+// ======================
+// MENU DENUNCIAS
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'inc_den_menu'
+) {
+
+    const opciones = {
+
+        a: 'ROBO A MANO ARMADA',
+
+        b: 'PERDIDA DE BIEN INMUEBLE',
+
+        c: 'EXTORSION A LOCAL',
+
+        d: 'AMENAZAS',
+
+        e: 'DESAPARICION DE PERSONA',
+
+        f: 'SECTOR O NICHO CONFLICTIVO',
+
+        g: 'AGRESION'
+    }
+
+    if (!opciones[mensaje]) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Opción inválida.
+
+a) Robo a mano armada
+b) Pérdida de bien inmueble
+c) Extorsión a local
+d) Amenazas
+e) Desaparición de persona
+f) Sector o nicho conflictivo
+g) Agresión`
+            }
+        )
+
+        return
+    }
+
+    estados[usuario].inc.tipo =
+        opciones[mensaje]
+
+    estados[usuario].paso =
+        'inc_nom'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Ingrese el nombre del ciudadano:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// MENU REQUERIMIENTOS
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'inc_req_menu'
+) {
+
+    const opciones = {
+        a: 'VISUALIZAR CAMARAS',
+        b: 'COLABORACION EN EVENTO',
+        c: 'RESGUARDO DE PERSONAL',
+        d: 'COLABORACION DE ATM'
+    }
+
+    if (!opciones[mensaje]) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Opción inválida.
+
+a) Visualizar cámaras
+b) Colaboración en evento
+c) Resguardo de personal
+d) Colaboración de ATM`
+            }
+        )
+
+        return
+    }
+
+    estados[usuario].inc.tipo =
+        opciones[mensaje]
+
+    estados[usuario].paso =
+        'inc_nom'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Ingrese el nombre del ciudadano:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// NOMBRE CIUDADANO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'inc_nom'
+) {
+
+    estados[usuario].inc.nombre =
+        text
+
+    estados[usuario].paso =
+        'inc_ced'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Ingrese el número de cédula:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// RESPUESTAS INCIDENCIA
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'inc_preg'
+) {
+
+    const inc =
+        estados[usuario].inc
+
+    const campo =
+        inc.preguntas[inc.i][0]
+
+    inc[campo] =
+        text
+
+    inc.i++
+
+    if (
+        inc.i <
+        inc.preguntas.length
+    ) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+                    inc.preguntas[inc.i][1]
+            }
+        )
+
+        return
+    }
+
+await genIncEas(
+    sock,
+    usuario
+)
+
+estados[usuario] = {
+    paso: 'inc_eas_menu',
+    inc: {}
+}
+
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`¿Desea generar otra cartilla de incidencia?
+
+a) Denuncias Ciudadanas
+b) Requerimientos Ciudadanos
+c) Incidencias del EAS
+d) Volver`
+    }
+)
+
+return
+}
+
+// ======================
+// INCIDENCIA EAS DETALLE
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'inc_eas_det'
+) {
+
+    estados[usuario].inc.detalle =
+        text
+
+    await genIncEas(
+        sock,
+        usuario
+    )
+
+    estados[usuario] = {
+        paso: 'inc_eas_menu',
+        inc: {}
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Desea generar otra cartilla de incidencia?
+
+a) Denuncias Ciudadanas
+b) Requerimientos Ciudadanos
+c) Incidencias del EAS
+d) Volver`
+        }
+    )
+
+    return
+}
+
+// ======================
+// CEDULA CIUDADANO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'inc_ced'
+) {
+
+    estados[usuario].inc.cedula =
+        text
+
+    estados[usuario].paso =
+        'inc_cel'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Ingrese el número de celular:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// CELULAR CIUDADANO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'inc_cel'
+) {
+
+    estados[usuario].inc.celular =
+        text
+
+    estados[usuario].paso =
+        'inc_lug'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Ingrese el lugar de la novedad:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// LUGAR NOVEDAD
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'inc_lug'
+) {
+
+    estados[usuario].inc.lugar =
+        text
+
+    estados[usuario].paso =
+        'inc_preg'
+
+    await enviarPregInc(
+        sock,
+        usuario
+    )
+
+    return
+}
+
+
+
+// ======================
+// CANTIDAD CONSOLIDADO MOVIL
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'cantidad_consolidado_movil'
+) {
+
+    const cantidad =
+        Number(text)
+
+    if (
+        isNaN(cantidad) ||
+        cantidad < 0
+    ) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Ingrese una cantidad válida'
+            }
+        )
+
+        return
+    }
+
+    const campo =
+        estados[usuario]
+            .campoConsolidadoMovil
+
+    estados[usuario]
+        .cantidadesMovil[campo] =
+        cantidad
+
+    estados[usuario].paso =
+        'menu_consolidado_movil'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`✅ Registro agregado.
+
+Seleccione una opción:
+
+a) Operativos
+b) Requerimientos
+c) Retiros temporales
+d) Levantamientos de indigentes
+e) Retenidos
+f) Rescate animal
+g) Retiro de covachas
+h) ACM heridos
+i) Ruidos molestos
+j) Mala disposición de basura
+k) Atención paramédica
+l) Desalojos de libadores consumidores
+m) Colaboración con otras instituciones
+n) Notificación / coordinación por mala disposición de desechos
+o) Finalizar consolidado`
+        }
+    )
+
+    return
+}
+
+// ======================
+// CONSOLIDADO MOVIL NOVEDADES
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'consolidado_movil_agregar_novedad'
+) {
+
+    if (
+        mensaje === 'a' ||
+        mensaje === 'si' ||
+        mensaje === 'sí'
+    ) {
+
+        estados[usuario].paso =
+            'consolidado_movil_detalle_novedad'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Detalle las novedades suscitadas en el turno:'
+            }
+        )
+
+        return
+    }
+
+    if (
+        mensaje === 'b' ||
+        mensaje === 'no'
+    ) {
+
+        estados[usuario].novedadesExtra =
+            ''
+
+        await generarConsolidadoMovil(
+            sock,
+            usuario
+        )
+
+        delete estados[usuario]
+
+        return
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Opción inválida.
+
+a) Sí
+b) No`
+        }
+    )
+
+    return
+}
+
+// ======================
+// DETALLE NOVEDAD CONSOLIDADO MOVIL
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'consolidado_movil_detalle_novedad'
+) {
+
+    estados[usuario].novedadesExtra =
+        text
+
+    await generarConsolidadoMovil(
+        sock,
+        usuario
+    )
+
+    delete estados[usuario]
+
+    return
+}
+
+
+
+// ======================
+// MENU FORMACION 
 // ======================
 
 if (
@@ -1046,19 +2637,23 @@ if (
         guardarFormaciones(
             formaciones
         )
+estados[usuario] = {
+    paso: 'seleccion_radioperadores',
+    tipoFormacion: 'entrante'
+}
 
-        estados[usuario] = {
-            paso: 'cantidad_radioperadores',
-            tipoFormacion: 'entrante'
-        }
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`Seleccione el grupo de radioperadores:
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'¿Cuántos radio operadores participan?'
-            }
-        )
+a) Calderón Jorge - Zúñiga Guillermo
+b) Figueroa Lenin - Burgos Darwin
+c) Parraga Isaac - Muñoz Gabriel
+d) Arboleda Abraham - Hidalgo Jeremy`
+    }
+)
 
         return
     }
@@ -1167,8 +2762,10 @@ ${datos.novedades || 'Sin novedades'}
 
 ¿Qué desea hacer?
 
-a) Modificar datos
-b) Volver`
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
         }
     )
 
@@ -1219,7 +2816,51 @@ if (
     'datos_guardados_formacion'
 ) {
 
-    if (mensaje === 'a') {
+   // FORMACION ENTRANTE
+if (mensaje === 'a') {
+
+    estados[usuario] = {
+        paso: 'novedades_formacion',
+        tipoFormacion: 'entrante'
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Novedades de formación:
+
+a) Sin novedades
+b) Ingresar novedades`
+        }
+    )
+
+    return
+}
+
+  // FORMACION SALIENTE
+if (mensaje === 'b') {
+
+    estados[usuario] = {
+        paso: 'novedades_formacion',
+        tipoFormacion: 'saliente'
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Novedades de formación:
+
+a) Sin novedades
+b) Ingresar novedades`
+        }
+    )
+
+    return
+}
+    // MODIFICAR DATOS
+    if (mensaje === 'c') {
 
         estados[usuario].paso =
             'modificar_saliente'
@@ -1242,7 +2883,8 @@ f) Cancelar`
         return
     }
 
-    if (mensaje === 'b') {
+    // VOLVER
+    if (mensaje === 'd') {
 
         delete estados[usuario]
 
@@ -1263,8 +2905,93 @@ f) Cancelar`
             text:
 `Opción inválida.
 
-a) Modificar datos
-b) Volver`
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
+        }
+    )
+
+    return
+}
+
+// ======================
+// ELEGIR TIPO FORMACION
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'elegir_tipo_formacion'
+) {
+
+    if (mensaje === 'a') {
+
+        estados[usuario].tipoFormacion =
+            'entrante'
+
+        estados[usuario].paso =
+            'novedades_formacion'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Novedades de formación:
+
+a) Sin novedades
+b) Ingresar novedades`
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === 'b') {
+
+        estados[usuario].tipoFormacion =
+            'saliente'
+
+        estados[usuario].paso =
+            'novedades_formacion'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Novedades de formación:
+
+a) Sin novedades
+b) Ingresar novedades`
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === 'c') {
+
+        delete estados[usuario]
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Escriba MENU para volver'
+            }
+        )
+
+        return
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Opción inválida.
+
+a) Formación Entrante
+b) Formación Saliente
+c) Volver`
         }
     )
 
@@ -1282,19 +3009,24 @@ if (
 
     if (mensaje === 'a') {
 
-        estados[usuario].paso =
-            'mod_cantidad_radioperadores'
+    estados[usuario].paso =
+        'seleccion_radioperadores_mod'
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'¿Cuántos radio operadores desea registrar?'
-            }
-        )
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Seleccione el grupo de radioperadores:
 
-        return
-    }
+a) Calderón - Zúñiga
+b) Figueroa - Burgos
+c) Parraga - Muñoz
+d) Arboleda - Hidalgo`
+        }
+    )
+
+    return
+}  
 
     if (mensaje === 'b') {
 
@@ -1312,25 +3044,39 @@ if (
         return
     }
 
-    if (mensaje === 'c') {
+if (mensaje === 'c') {
 
-        estados[usuario].paso =
-            'mod_presencia_policial'
+    const policias =
+        cargarPolicias()
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`¿Hubo presencia policial?
+    let menuPolicias =
+`Seleccione personal policial:
 
-a) Sí
-b) No`
-            }
-        )
+0. Sin servidor policial
+`
 
-        return
-    }
+    policias.forEach((policia, index) => {
+        menuPolicias +=
+`${index + 1}. ${policia}
+`
+    })
+menuPolicias +=
+`
+x. Agregar nuevo servidor policial`
 
+    estados[usuario].paso =
+        'mod_policias_formacion'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text: menuPolicias
+        }
+    )
+
+    return
+}
+    
     if (mensaje === 'd') {
 
         estados[usuario].paso =
@@ -1350,24 +3096,25 @@ b) No`
         return
     }
 
-    if (mensaje === 'e') {
+if(mensaje === 'e') {
 
-        estados[usuario].paso =
-            'novedades_formacion'
+    estados[usuario].paso =
+        'elegir_tipo_formacion'
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`Novedades de formación:
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Qué formación desea generar?
 
-a) Sin novedades
-b) Ingresar novedades`
-            }
-        )
+a) Formación Entrante
+b) Formación Saliente
+c) Volver`
+        }
+    )
 
-        return
-    }
+    return
+}
 
     if (mensaje === 'f') {
 
@@ -1396,6 +3143,160 @@ c) Personal Policial
 d) Móviles
 e) Novedades
 f) Cancelar`
+        }
+    )
+
+    return
+}
+
+// ======================
+// MOD POLICIAS FORMACION
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'mod_policias_formacion'
+) {
+
+    const formaciones =
+        cargarFormaciones()
+
+    const policias =
+        cargarPolicias()
+
+    if (mensaje === 'x') {
+
+        estados[usuario].paso =
+            'agregar_policia_formacion_mod'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Ingrese rango y nombre del nuevo servidor policial'
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === '0') {
+
+        formaciones[usuario].policias = []
+
+    } else {
+
+        const indice =
+            parseInt(mensaje) - 1
+
+        if (
+            isNaN(indice) ||
+            !policias[indice]
+        ) {
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+'Opción inválida. Seleccione un número de la lista.'
+                }
+            )
+
+            return
+        }
+
+        formaciones[usuario].policias = [
+            policias[indice]
+        ]
+    }
+
+    guardarFormaciones(
+        formaciones
+    )
+
+    estados[usuario].paso =
+        'datos_guardados_formacion'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`✅ Personal policial actualizado correctamente.
+
+¿Qué desea hacer?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
+        }
+    )
+
+    return
+}
+
+// ======================
+// AGREGAR POLICIA
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'agregar_policia_formacion_mod'
+) {
+
+    const nuevoPolicia =
+        text.trim()
+
+    if (!nuevoPolicia) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Ingrese un nombre válido'
+            }
+        )
+
+        return
+    }
+
+    const policias =
+        cargarPolicias()
+
+    policias.push(
+        nuevoPolicia
+    )
+
+    guardarPolicias(
+        policias
+    )
+
+    const formaciones =
+        cargarFormaciones()
+
+    formaciones[usuario].policias = [
+        nuevoPolicia
+    ]
+
+    guardarFormaciones(
+        formaciones
+    )
+
+    estados[usuario].paso =
+        'datos_guardados_formacion'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`✅ Servidor policial agregado y seleccionado.
+
+¿Qué desea hacer?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
         }
     )
 
@@ -1448,381 +3349,24 @@ if (
         }
     )
 
-    estados[usuario].paso =
-        'menu_saliente'
+ estados[usuario].paso =
+    'elegir_tipo_formacion'
 
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`¿Desea generar la formación saliente?
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`¿Qué formación desea generar?
 
-a) Utilizar los mismos datos
-b) Modificar datos
-c) Cancelar`
-        }
-    )
+a) Formación Entrante
+b) Formación Saliente
+c) Volver`
+    }
+)
 
-    return
+return
 }
 
-// ======================
-// MODIFICAR CANTIDAD RADIOOPERADORES
-// ======================
-
-if (
-    estados[usuario]?.paso ===
-    'mod_cantidad_radioperadores'
-) {
-
-    const cantidad =
-        Number(text)
-
-    if (
-        isNaN(cantidad) ||
-        cantidad < 1
-    ) {
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese una cantidad válida'
-            }
-        )
-
-        return
-    }
-
-    const formaciones =
-        cargarFormaciones()
-
-    formaciones[usuario].radioOperadores = []
-
-    guardarFormaciones(
-        formaciones
-    )
-
-    estados[usuario].cantidadRadio =
-        cantidad
-
-    estados[usuario].paso =
-        'mod_nombre_radioperador'
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-'Ingrese nombre del radio operador 1'
-        }
-    )
-
-    return
-}
-
-// ======================
-// MODIFICAR NOMBRE RADIOOPERADOR
-// ======================
-
-if (
-    estados[usuario]?.paso ===
-    'mod_nombre_radioperador'
-) {
-
-    if (!/[a-zA-ZÁÉÍÓÚáéíóúÑñ]/.test(text)) {
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese un nombre válido'
-            }
-        )
-
-        return
-    }
-
-    const formaciones =
-        cargarFormaciones()
-
-    formaciones[usuario]
-        .radioOperadores
-        .push(text)
-
-    guardarFormaciones(
-        formaciones
-    )
-
-    if (
-        formaciones[usuario]
-            .radioOperadores
-            .length <
-        estados[usuario]
-            .cantidadRadio
-    ) {
-
-        const siguiente =
-            formaciones[usuario]
-                .radioOperadores
-                .length + 1
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`Ingrese nombre del radio operador ${siguiente}`
-            }
-        )
-
-        return
-    }
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-'✅ Radioperadores actualizados correctamente'
-        }
-    )
-
-    estados[usuario].paso =
-        'menu_saliente'
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`¿Desea generar la formación saliente?
-
-a) Utilizar los mismos datos
-b) Modificar datos
-c) Cancelar`
-        }
-    )
-
-    return
-}
-
-// ======================
-// MODIFICAR PRESENCIA POLICIAL
-// ======================
-
-if (
-    estados[usuario]?.paso ===
-    'mod_presencia_policial'
-) {
-
-    if (
-        mensaje === 'a' ||
-        mensaje === 'si' ||
-        mensaje === 'sí'
-    ) {
-
-        estados[usuario].paso =
-            'mod_cantidad_policias'
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'¿Cuántos policías desea registrar? (1-3)'
-            }
-        )
-
-        return
-    }
-
-    if (
-        mensaje === 'b' ||
-        mensaje === 'no'
-    ) {
-
-        const formaciones =
-            cargarFormaciones()
-
-        formaciones[usuario].policias = []
-
-        guardarFormaciones(
-            formaciones
-        )
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'✅ Personal policial actualizado: No registrado'
-            }
-        )
-
-        estados[usuario].paso =
-            'menu_saliente'
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`¿Desea generar la formación saliente?
-
-a) Utilizar los mismos datos
-b) Modificar datos
-c) Cancelar`
-            }
-        )
-
-        return
-    }
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`Opción inválida.
-
-a) Sí
-b) No`
-        }
-    )
-
-    return
-}
-
-// ======================
-// MODIFICAR CANTIDAD POLICIAS
-// ======================
-
-if (
-    estados[usuario]?.paso ===
-    'mod_cantidad_policias'
-) {
-
-    const cantidad =
-        Number(text)
-
-    if (
-        isNaN(cantidad) ||
-        cantidad < 1 ||
-        cantidad > 3
-    ) {
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese un número entre 1 y 3'
-            }
-        )
-
-        return
-    }
-
-    const formaciones =
-        cargarFormaciones()
-
-    formaciones[usuario].policias = []
-
-    guardarFormaciones(
-        formaciones
-    )
-
-    estados[usuario].cantidadPolicias =
-        cantidad
-
-    estados[usuario].paso =
-        'mod_nombre_policia'
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-'Ingrese nombre del policía 1'
-        }
-    )
-
-    return
-}
-
-// ======================
-// MODIFICAR NOMBRE POLICIA
-// ======================
-
-if (
-    estados[usuario]?.paso ===
-    'mod_nombre_policia'
-) {
-
-    if (!/[a-zA-ZÁÉÍÓÚáéíóúÑñ]/.test(text)) {
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese un nombre válido'
-            }
-        )
-
-        return
-    }
-
-    const formaciones =
-        cargarFormaciones()
-
-    formaciones[usuario]
-        .policias
-        .push(text)
-
-    guardarFormaciones(
-        formaciones
-    )
-
-    if (
-        formaciones[usuario]
-            .policias
-            .length <
-        estados[usuario]
-            .cantidadPolicias
-    ) {
-
-        const siguiente =
-            formaciones[usuario]
-                .policias
-                .length + 1
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`Ingrese nombre del policía ${siguiente}`
-            }
-        )
-
-        return
-    }
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-'✅ Personal policial actualizado correctamente'
-        }
-    )
-
-    estados[usuario].paso =
-        'menu_saliente'
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`¿Desea generar la formación saliente?
-
-a) Utilizar los mismos datos
-b) Modificar datos
-c) Cancelar`
-        }
-    )
-
-    return
-}
 // ======================
 // MODIFICAR MOVILES OPERATIVOS
 // ======================
@@ -1862,22 +3406,22 @@ if (
             }
         )
 
-        estados[usuario].paso =
-            'menu_saliente'
+   estados[usuario].paso =
+    'elegir_tipo_formacion'
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`¿Desea generar la formación saliente?
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`¿Qué formación desea generar?
 
-a) Utilizar los mismos datos
-b) Modificar datos
-c) Cancelar`
-            }
-        )
+a) Formación Entrante
+b) Formación Saliente
+c) Volver`
+    }
+)
 
-        return
+return
     }
 
     if (
@@ -1993,23 +3537,22 @@ if (
 '✅ Móviles actualizados correctamente'
         }
     )
+estados[usuario].paso =
+    'elegir_tipo_formacion'
 
-    estados[usuario].paso =
-        'menu_saliente'
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`¿Qué formación desea generar?
 
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`¿Desea generar la formación saliente?
+a) Formación Entrante
+b) Formación Saliente
+c) Volver`
+    }
+)
 
-a) Utilizar los mismos datos
-b) Modificar datos
-c) Cancelar`
-        }
-    )
-
-    return
+return
 }
 
 
@@ -2023,28 +3566,25 @@ if (
     'menu_saliente'
 ) {
 
-    if (mensaje === 'a') {
+if (mensaje === 'a') {
 
-        estados[usuario].tipoFormacion =
-            'saliente'
+    estados[usuario].paso =
+        'elegir_tipo_formacion'
 
-        estados[usuario].paso =
-            'novedades_formacion'
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Qué formación desea generar?
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`Novedades de formación:
+a) Formación Entrante
+b) Formación Saliente
+c) Volver`
+        }
+    )
 
-a) Sin novedades
-b) Ingresar novedades`
-            }
-        )
-
-        return
-    }
-
+    return
+}
     if (mensaje === 'b') {
 
         estados[usuario].tipoFormacion =
@@ -2102,70 +3642,45 @@ c) Cancelar`
 }
 
 // ======================
-// CANTIDAD RADIOOPERADORES
+// SELECCION RADIOPERADORES
 // ======================
 
 if (
     estados[usuario]?.paso ===
-    'cantidad_radioperadores'
+    'seleccion_radioperadores'
 ) {
 
-    const cantidad =
-        Number(text)
-
-    if (
-        isNaN(cantidad) ||
-        cantidad < 1
-    ) {
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese una cantidad válida'
-            }
-        )
-
-        return
+    const grupos = {
+        a: [
+            'CALDERON JORGE',
+            'ZUÑIGA GUILLERMO'
+        ],
+        b: [
+            'FIGUEROA LENIN',
+            'BURGOS DARWIN'
+        ],
+        c: [
+            'PARRAGA ISAAC',
+            'MUÑOZ GABRIEL'
+        ],
+        d: [
+            'ARBOLEDA ABRAHAM',
+            'HIDALGO JEREMY'
+        ]
     }
 
-    estados[usuario].cantidadRadio =
-        cantidad
-
-    estados[usuario].radioActual = 1
-
-    estados[usuario].radioOperadores = []
-
-    estados[usuario].paso =
-        'nombre_radioperador'
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-'Ingrese nombre del radio operador 1'
-        }
-    )
-
-    return
-}
-
-// ======================
-// NOMBRE RADIOOPERADOR
-// ======================
-
-if (
-    estados[usuario]?.paso ===
-    'nombre_radioperador'
-) {
-
-    if (!/[a-zA-ZÁÉÍÓÚáéíóúÑñ]/.test(text)) {
+    if (!grupos[mensaje]) {
 
         await sock.sendMessage(
             usuario,
             {
                 text:
-'Ingrese el nombre del radio operador, no número'
+`Opción inválida.
+
+a) Calderón Jorge - Zúñiga Guillermo
+b) Figueroa Lenin - Burgos Darwin
+c) Parraga Isaac - Muñoz Gabriel
+d) Arboleda Abraham - Hidalgo Jeremy`
             }
         )
 
@@ -2176,54 +3691,15 @@ if (
         cargarFormaciones()
 
     if (!formaciones[usuario]) {
-
-        formaciones[usuario] = {
-            tipo: estados[usuario].tipoFormacion || 'entrante',
-            radioOperadores: [],
-            operativos: 0,
-            policias: [],
-            moviles: [
-                '187',
-                '188',
-                '189'
-            ],
-            novedadMoviles: '',
-            novedades: ''
-        }
-
+        formaciones[usuario] = {}
     }
 
-    formaciones[usuario]
-        .radioOperadores
-        .push(text)
+    formaciones[usuario].radioOperadores =
+        grupos[mensaje]
 
     guardarFormaciones(
         formaciones
     )
-
-    if (
-        formaciones[usuario]
-            .radioOperadores
-            .length <
-        estados[usuario]
-            .cantidadRadio
-    ) {
-
-        const siguiente =
-            formaciones[usuario]
-                .radioOperadores
-                .length + 1
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`Ingrese nombre del radio operador ${siguiente}`
-            }
-        )
-
-        return
-    }
 
     estados[usuario].paso =
         'cantidad_operativos'
@@ -2233,6 +3709,88 @@ if (
         {
             text:
 '¿Cuántos ACM operativos participaron?'
+        }
+    )
+
+    return
+}
+
+// ======================
+// SELECCION RADIOPERADORES MOD
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'seleccion_radioperadores_mod'
+) {
+
+    const grupos = {
+        a: [
+            'CALDERON JORGE',
+            'ZUÑIGA GUILLERMO'
+        ],
+        b: [
+            'FIGUEROA LENIN',
+            'BURGOS DARWIN'
+        ],
+        c: [
+            'PARRAGA ISAAC',
+            'MUÑOZ GABRIEL'
+        ],
+        d: [
+            'ARBOLEDA ABRAHAM',
+            'HIDALGO JEREMY'
+        ]
+    }
+
+    if (!grupos[mensaje]) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Opción inválida.
+
+a) Calderón - Zúñiga
+b) Figueroa - Burgos
+c) Parraga - Muñoz
+d) Arboleda - Hidalgo`
+            }
+        )
+
+        return
+    }
+
+    const formaciones =
+        cargarFormaciones()
+
+    formaciones[usuario].radioOperadores =
+        grupos[mensaje]
+
+    guardarFormaciones(
+        formaciones
+    )
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'✅ Radioperadores actualizados correctamente'
+        }
+    )
+
+    estados[usuario].paso =
+        'elegir_tipo_formacion'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Qué formación desea generar?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Volver`
         }
     )
 
@@ -2283,21 +3841,33 @@ guardarFormaciones(
     formaciones
 )
 
-    estados[usuario].paso =
-        'presencia_policial'
+const policias =
+    cargarPolicias()
 
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`¿Hubo presencia policial?
+let menuPolicias =
+`Seleccione personal policial:
 
-a) Sí
-b) No`
-        }
-    )
+0. Sin servidor policial
+`
 
-    return
+policias.forEach((policia, index) => {
+    menuPolicias +=
+`${index + 1}. ${policia}
+`
+})
+
+estados[usuario].paso =
+    'presencia_policial'
+
+await sock.sendMessage(
+    usuario,
+    {
+        text: menuPolicias
+    }
+)
+
+return
+
 }
 
 // ======================
@@ -2309,171 +3879,49 @@ if (
     'presencia_policial'
 ) {
 
-    if (
-        mensaje === 'a' ||
-        mensaje === 'si' ||
-        mensaje === 'sí'
-    ) {
+    const formaciones =
+        cargarFormaciones()
 
-        estados[usuario].paso =
-            'cantidad_policias'
+    const policias =
+        cargarPolicias()
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'¿Cuántos policías participaron? (1-3)'
-            }
-        )
-
-        return
+    if (!formaciones[usuario]) {
+        formaciones[usuario] = {}
     }
 
-    if (
-        mensaje === 'b' ||
-        mensaje === 'no'
-    ) {
-
-        const formaciones =
-            cargarFormaciones()
-
-        if (!formaciones[usuario]) {
-            formaciones[usuario] = {}
-        }
+    if (mensaje === '0') {
 
         formaciones[usuario].policias = []
 
-        guardarFormaciones(
-            formaciones
-        )
+    } else {
 
-        estados[usuario].paso =
-            'moviles_operativos'
+        const indice =
+            parseInt(mensaje) - 1
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`¿Todos los móviles estuvieron operativos?
+        if (
+            isNaN(indice) ||
+            !policias[indice]
+        ) {
 
-a) Sí
-b) No`
-            }
-        )
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+'Opción inválida. Seleccione un número de la lista.'
+                }
+            )
 
-        return
-    }
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`Opción inválida.
-
-Responda:
-a) Sí
-b) No`
+            return
         }
-    )
 
-    return
-}
-
-// ======================
-// CANTIDAD POLICIAS
-// ======================
-
-if (
-    estados[usuario]?.paso ===
-    'cantidad_policias'
-) {
-
-    const cantidad =
-        Number(text)
-
-    if (
-        isNaN(cantidad) ||
-        cantidad < 1 ||
-        cantidad > 3
-    ) {
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese un número entre 1 y 3'
-            }
-        )
-
-        return
+        formaciones[usuario].policias = [
+            policias[indice]
+        ]
     }
 
-    estados[usuario].cantidadPolicias =
-        cantidad
-
-    estados[usuario].policiaActual =
-        1
-
-    estados[usuario].policias = []
-
-    estados[usuario].paso =
-        'nombre_policia_formacion'
-
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-'Ingrese nombre del policía 1'
-        }
+    guardarFormaciones(
+        formaciones
     )
-
-    return
-}
-
-// ======================
-// NOMBRE POLICIA FORMACION
-// ======================
-
-if (
-    estados[usuario]?.paso ===
-    'nombre_policia_formacion'
-) {
-
-const formaciones =
-    cargarFormaciones()
-
-formaciones[usuario]
-    .policias
-    .push(text)
-
-guardarFormaciones(
-    formaciones
-)
-
-    const siguiente =
-        estados[usuario]
-            .policiaActual + 1
-
-    if (
-        siguiente <=
-        estados[usuario]
-            .cantidadPolicias
-    ) {
-
-        estados[usuario]
-            .policiaActual =
-            siguiente
-
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-`Ingrese nombre del policía ${siguiente}`
-            }
-        )
-
-        return
-    }
 
     estados[usuario].paso =
         'moviles_operativos'
@@ -2523,15 +3971,19 @@ if (
         )
 
         estados[usuario].paso =
-            'novedades_formacion'
+            'elegir_tipo_formacion'
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese novedades de la formación. Si no hay novedades escriba: "A", si hay novedades escriba "B"'
-            }
-        )
+            await sock.sendMessage(
+    usuario,
+    {
+        text:
+`¿Qué formación desea generar?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Volver`
+    }
+)
 
         return
     }
@@ -2640,20 +4092,22 @@ if (
     )
 
     estados[usuario].paso =
-        'novedades_formacion'
+    'elegir_tipo_formacion'
 
 await sock.sendMessage(
     usuario,
     {
         text:
-`Novedades de formación:
+`¿Qué formación desea generar?
 
-a) Sin novedades
-b) Ingresar novedades`
+a) Formación Entrante
+b) Formación Saliente
+c) Volver`
     }
 )
 
-    return
+return
+    
 }
 
 // ======================
@@ -2668,7 +4122,13 @@ if (
     const formaciones =
         cargarFormaciones()
 
-    if (mensaje === 'a') {
+    const tipoFormacionActual =
+        estados[usuario].tipoFormacion
+
+    if (
+        mensaje === 'a' ||
+        mensaje === 'no'
+    ) {
 
         formaciones[usuario].novedades =
             'Sin novedades'
@@ -2678,19 +4138,37 @@ if (
         )
 
         await generarFormacion(
-    sock,
-    usuario,
-    estados[usuario].tipoFormacion
-)
+            sock,
+            usuario,
+            tipoFormacionActual
+        )
 
-estados[usuario] = {
-    paso: 'otra_formacion'
-}
+        estados[usuario] = {
+            paso: 'datos_guardados_formacion',
+            tipoFormacion: tipoFormacionActual
+        }
 
-return
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`¿Qué desea hacer?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
+            }
+        )
+
+        return
     }
 
-    if (mensaje === 'b') {
+    if (
+        mensaje === 'b' ||
+        mensaje === 'si' ||
+        mensaje === 'sí'
+    ) {
 
         estados[usuario].paso =
             'detalle_novedades_formacion'
@@ -2739,17 +4217,34 @@ if (
         formaciones
     )
 
-await generarFormacion(
-    sock,
-    usuario,
-    estados[usuario].tipoFormacion
-)
+    const tipoFormacionActual =
+        estados[usuario].tipoFormacion
 
-estados[usuario] = {
-    paso: 'otra_formacion'
-}
+    await generarFormacion(
+        sock,
+        usuario,
+        tipoFormacionActual
+    )
 
-return
+    estados[usuario] = {
+        paso: 'datos_guardados_formacion',
+        tipoFormacion: tipoFormacionActual
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Qué desea hacer?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
+        }
+    )
+
+    return
 }
 
 // ======================
@@ -2939,24 +4434,36 @@ if (
 
     }
 
-    if (mensaje === '4') {
+if (mensaje === '4') {
 
-        estados[usuario] = {
-            paso: 'nuevo_policia'
-        }
+    const policias =
+        cargarPolicias()
 
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese rango y nombre policial'
-            }
-        )
+    let menuPolicias =
+`Seleccione servidor policial:
 
-        return
+0. Sin servidor policial
+`
 
+policias.forEach((policia, index) => {
+    menuPolicias +=
+`${index + 1}. ${policia}
+`
+})
+
+    estados[usuario] = {
+        paso: 'nuevo_policia'
     }
 
+    await sock.sendMessage(
+        usuario,
+        {
+            text: menuPolicias
+        }
+    )
+
+    return
+}
 }
 
 // ======================
@@ -3113,34 +4620,68 @@ if (
     'nuevo_policia'
 ) {
 
+    const policias =
+        cargarPolicias()
+
+    let policiaSeleccionado = ''
+
+    if (mensaje === '0') {
+
+        policiaSeleccionado =
+            ''
+
+    } else {
+
+        const indice =
+            parseInt(mensaje) - 1
+
+        if (
+            isNaN(indice) ||
+            !policias[indice]
+        ) {
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+'Opción inválida. Seleccione un número de la lista.'
+                }
+            )
+
+            return
+        }
+
+        policiaSeleccionado =
+    policias[indice]
+    }
+
     usuarios[usuario] = {
         ...usuarios[usuario],
-        policia: text
+        policia: policiaSeleccionado
     }
 
     guardarUsuarios(
         usuarios
     )
 
-estados[usuario] = {
-    paso: 'continuar_edicion'
-}
+    estados[usuario] = {
+        paso: 'continuar_edicion'
+    }
 
-await sock.sendMessage(
-    usuario,
-    {
-        text:
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
 `✅ Datos actualizados correctamente
 
 ¿Desea cambiar algo más?
 
 1. SI
 2. CONTINUAR CON CARTILLA`
-    }
-)
+        }
+    )
 
-return
-
+    return
 }
 
 // ======================
@@ -3304,227 +4845,195 @@ if (
 
                 }
 
-                // ======================
-                // CP
-                // ======================
+// ======================
+// CP  
+// ======================
 
-                if (
-                    estados[usuario]
-                        ?.paso === 'cp'
-                ) {
+if (
+    estados[usuario]
+        ?.paso === 'cp'
+) {
 
-                    usuarios[usuario] = {
-                        ...usuarios[usuario],
-                        cp: text
-                    }
+    usuarios[usuario] = {
+        ...usuarios[usuario],
+        cp: text
+    }
 
-                    guardarUsuarios(
-                        usuarios
-                    )
+    guardarUsuarios(
+        usuarios
+    )
 
-                    estados[usuario]
-                        .paso = 'policia'
+    const policias =
+        cargarPolicias()
 
-                    await sock.sendMessage(
-                        usuario,
-                        {
-                            text:
-'¿Hay policía en el móvil?\n1. Si\n2. No'
-                        }
-                    )
+    let menuPolicias =
+`Seleccione servidor policial:
 
-                    return
+0. Sin servidor policial
+`
 
+policias.forEach((policia, index) => {
+    menuPolicias +=
+`${index + 1}. ${policia}
+`
+})
+
+    estados[usuario]
+        .paso = 'policia'
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text: menuPolicias
+        }
+    )
+
+    return
+}
+
+// ======================
+// POLICIA  
+// ======================
+
+if (
+    estados[usuario]
+        ?.paso === 'policia'
+) {
+
+    const policias =
+        cargarPolicias()
+
+    let policiaSeleccionado = ''
+
+    if (mensaje === '0') {
+
+        policiaSeleccionado = ''
+
+    } else {
+
+        const indice =
+            parseInt(mensaje) - 1
+
+        if (
+            isNaN(indice) ||
+            !policias[indice]
+        ) {
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+'Opción inválida. Seleccione un número de la lista.'
                 }
+            )
 
-                // ======================
-                // POLICIA
-                // ======================
+            return
+        }
 
-                if (
-                    estados[usuario]
-                        ?.paso === 'policia'
-                ) {
+        policiaSeleccionado =
+            policias[indice]
+    }
 
-                    if (mensaje === '1') {
+    const jornadaActual =
+        obtenerJornadaAutomatica()
 
-                        estados[usuario]
-                            .paso =
-                            'nombre_policia'
+    usuarios[usuario] = {
+        ...usuarios[usuario],
+        policia: policiaSeleccionado,
+        jornada: jornadaActual.jornada,
+        horario: jornadaActual.horario
+    }
 
-                        await sock.sendMessage(
-                            usuario,
-                            {
-                                text:
-'Ingrese rango y nombre del servidor policial'
-                            }
-                        )
+    guardarUsuarios(
+        usuarios
+    )
 
-                        return
+    estados[usuario]
+        .paso =
+        'direccion'
 
-                    }
+    const direcciones =
+        cargarDirecciones()
 
-                    usuarios[usuario] = {
-                        ...usuarios[usuario],
-                        policia: 'No'
-                    }
+    let lista = ''
 
-                    guardarUsuarios(
-                        usuarios
-                    )
+    direcciones.forEach(
+        (d, i) => {
 
-                    estados[usuario]
-                        .paso =
-                        'jornada'
-
-                    await sock.sendMessage(
-                        usuario,
-                        {
-                            text:
-'Seleccione jornada:\n1. Matutina\n2. Vespertina\n3. Amanecida'
-                        }
-                    )
-
-                    return
-
-                }
-
-                // ======================
-                // NOMBRE POLICIA
-                // ======================
-
-                if (
-                    estados[usuario]
-                        ?.paso ===
-                    'nombre_policia'
-                ) {
-
-                    usuarios[usuario] = {
-                        ...usuarios[usuario],
-                        policia: text
-                    }
-
-                    guardarUsuarios(
-                        usuarios
-                    )
-
-                    estados[usuario]
-                        .paso =
-                        'jornada'
-
-                    await sock.sendMessage(
-                        usuario,
-                        {
-                            text:
-'Seleccione jornada:\n1. Matutina\n2. Vespertina\n3. Amanecida'
-                        }
-                    )
-
-                    return
-
-                }
-
-                // ======================
-                // JORNADA
-                // ======================
-
-                if (
-                    estados[usuario]
-                        ?.paso ===
-                    'jornada'
-                ) {
-
-                    let jornada = ''
-                    let horario = ''
-
-                    if (mensaje === '1') {
-
-                        jornada =
-                            'MATUTINA'
-
-                        horario =
-                            '06:00 A 14:30'
-
-                    }
-
-                    else if (
-                        mensaje === '2'
-                    ) {
-
-                        jornada =
-                            'VESPERTINA'
-
-                        horario =
-                            '14:00 A 22:30'
-
-                    }
-
-                    else if (
-                        mensaje === '3'
-                    ) {
-
-                        jornada =
-                            'AMANECIDA'
-
-                        horario =
-                            '22:00 A 06:30'
-
-                    }
-
-                    else {
-
-                        await sock.sendMessage(
-                            usuario,
-                            {
-                                text:
-'❌ Jornada inválida'
-                            }
-                        )
-
-                        return
-
-                    }
-
-                    usuarios[usuario] = {
-                        ...usuarios[usuario],
-                        jornada,
-                        horario
-                    }
-
-                    guardarUsuarios(
-                        usuarios
-                    )
-
-                    estados[usuario]
-                        .paso =
-                        'direccion'
-
-                    const direcciones =
-                        cargarDirecciones()
-
-                    let lista = ''
-
-                    direcciones.forEach(
-                        (d, i) => {
-
-                            lista +=
+            lista +=
 `${i + 1}. ${d}\n`
 
-                        }
-                    )
+        }
+    )
 
-                    await sock.sendMessage(
-                        usuario,
-                        {
-                            text:
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Direcciones guardadas:
+
+${lista}
+Escriba una dirección nueva o el número de una existente`
+        }
+    )
+
+    return
+}
+// ======================
+// JORNADA
+// ======================
+
+if (
+    estados[usuario]
+        ?.paso ===
+    'jornada'
+) {
+
+    const jornadaActual =
+        obtenerJornadaAutomatica()
+
+    usuarios[usuario] = {
+        ...usuarios[usuario],
+        jornada:
+            jornadaActual.jornada,
+        horario:
+            jornadaActual.horario
+    }
+
+    guardarUsuarios(
+        usuarios
+    )
+
+    estados[usuario]
+        .paso =
+        'direccion'
+
+    const direcciones =
+        cargarDirecciones()
+
+    let lista = ''
+
+    direcciones.forEach(
+        (d, i) => {
+
+            lista +=
+`${i + 1}. ${d}\n`
+
+        }
+    )
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
 `Direcciones guardadas:\n\n${lista}\nEscriba una dirección nueva o el número de una existente`
-                        }
-                    )
+        }
+    )
 
-                    return
+    return
 
-                }
-
+}
+                
                 // ======================
                 // DIRECCION
                 // ======================
@@ -3595,7 +5104,7 @@ if (
                             text:
 `Seleccione causa:
 
-a) Desalojo de vendedores autónomos no regularizados
+a) Desalojo de vendedores
 b) Retiro temporal
 c) Requerimiento
 d) Rondas disuasivas
