@@ -1,0 +1,39 @@
+{
+  "entrante": {},
+  "saliente": {},
+  "18949546705146@lid": {
+    "tipo": "entrante",
+    "radioOperadores": [
+      "Zuñiga Guillermo",
+      "Jorge Calderón"
+    ],
+    "operativos": 4,
+    "policias": [
+      "Policía José Manuel"
+    ],
+    "moviles": [
+      "187",
+      "189"
+    ],
+    "novedadMoviles": "Móvil 188: sin personal en movil",
+    "novedades": "Sin novedades"
+  },
+  "196323676557477@lid": {
+    "tipo": "entrante",
+    "radioOperadores": [
+      "FIGUEROA LENIN",
+      "BURGOS DARWIN"
+    ],
+    "operativos": 9,
+    "policias": [
+      "Policia Figueroa Yandry"
+    ],
+    "moviles": [
+      "187",
+      "188",
+      "189"
+    ],
+    "novedadMoviles": "",
+    "novedades": "Sin novedades"
+  }
+}
