@@ -7,6 +7,34 @@ const {
 const qrcode = require('qrcode-terminal')
 const fs = require('fs')
 
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function pausaHumana(sock, usuario) {
+
+    try {
+
+        await sock.sendPresenceUpdate(
+            'composing',
+            usuario
+        )
+
+    } catch (error) {
+        console.log(
+            'Error presencia:',
+            error.message
+        )
+    }
+
+    const tiempo =
+        Math.floor(
+            Math.random() * 1000
+        ) + 300
+
+    await delay(tiempo)
+}
+
 // ======================
 // ESTADOS TEMPORALES
 // ======================
@@ -136,6 +164,92 @@ function guardarFormaciones(data) {
 
 }
 
+function cargarRadioperadores() {
+    if (!fs.existsSync('./database/radioperadores.json')) {
+        return {}
+    }
+
+    return JSON.parse(
+        fs.readFileSync('./database/radioperadores.json', 'utf8')
+    )
+}
+
+function esRadioperador(usuario) {
+    const radioperadores = cargarRadioperadores()
+    return !!radioperadores[usuario]
+}
+
+function cargarCodigos() {
+    if (!fs.existsSync('./database/codigos.json')) {
+        return {
+            codigos: {},
+            usados: [],
+            intentos: {},
+            bloqueados: {},
+            accesosTemporales: {}
+        }
+    }
+
+    const data = JSON.parse(
+        fs.readFileSync('./database/codigos.json', 'utf8')
+    )
+
+    data.codigos = data.codigos || {}
+    data.usados = data.usados || []
+    data.intentos = data.intentos || {}
+    data.bloqueados = data.bloqueados || {}
+    data.accesosTemporales = data.accesosTemporales || {}
+
+    return data
+}
+
+function guardarCodigos(data) {
+    fs.writeFileSync(
+        './database/codigos.json',
+        JSON.stringify(data, null, 2)
+    )
+}
+function generarCodigoTemporal() {
+    const caracteres =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+    let codigo = ''
+
+    for (let i = 0; i < 5; i++) {
+        codigo += caracteres.charAt(
+            Math.floor(
+                Math.random() * caracteres.length
+            )
+        )
+    }
+
+    return codigo
+}
+
+function crearCodigoUnico() {
+    const data =
+        cargarCodigos()
+
+    let codigo
+
+    do {
+        codigo =
+            generarCodigoTemporal()
+    } while (
+        data.codigos[codigo] ||
+        data.usados.includes(codigo)
+    )
+
+    data.codigos[codigo] = {
+        creado: Date.now(),
+        vence: Date.now() + (8 * 60 * 60 * 1000),
+        usado: false
+    }
+
+    guardarCodigos(data)
+
+    return codigo
+}
 // ======================
 // FECHA
 // ======================
@@ -149,7 +263,7 @@ function obtenerFecha() {
 }
 
 // ======================
-// HORA +5 MIN
+// HORA +1 MIN
 // ======================
 
 function obtenerHoraMas5() {
@@ -200,22 +314,12 @@ function obtenerSaludo() {
 
 function obtenerJornadaAutomatica() {
 
-    const ahora =
-        new Date()
-
     const hora =
-        ahora.getHours()
+        new Date().getHours()
 
-    const minutos =
-        ahora.getMinutes()
-
-    const totalMinutos =
-        (hora * 60) + minutos
-
-    // 06:00 - 14:30
     if (
-        totalMinutos >= 360 &&
-        totalMinutos <= 870
+        hora >= 6 &&
+        hora < 14
     ) {
 
         return {
@@ -224,10 +328,9 @@ function obtenerJornadaAutomatica() {
         }
     }
 
-    // 14:31 - 22:30
     if (
-        totalMinutos >= 871 &&
-        totalMinutos <= 1350
+        hora >= 14 &&
+        hora < 22
     ) {
 
         return {
@@ -236,13 +339,11 @@ function obtenerJornadaAutomatica() {
         }
     }
 
-    // 22:31 - 05:59
     return {
         jornada: 'AMANECIDA',
         horario: '22:00 A 06:30'
     }
 }
-
 // ======================
 // GENERADOR CARTILLA
 // ======================
@@ -257,7 +358,7 @@ async function generarCartilla(
     const datos = usuarios[usuario]
 
     if (!datos) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -297,6 +398,7 @@ ${datos.policia ? `*POLICIA:* ${datos.policia}` : ''}
 
 Adjunto fotografía`
 
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -319,7 +421,7 @@ async function generarFormacion(
         formaciones[usuario]
 
     if (!datos) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -407,7 +509,7 @@ ${reporta}
 *“Lealtad, Valor y Orden”*
 
 *Adjunto Fotografía:*`
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -437,7 +539,7 @@ async function generarConsolidado(
         formaciones[usuario]
 
     if (!formacion) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -506,7 +608,7 @@ TOTAL: ${String(datos.colaboracionInstituciones || 0).padStart(2,'0')}
 
 *NOTIFICACIÓN / COORDINACIÓN POR MALA DISPOSICIÓN DE DESECHOS*
 TOTAL: ${String(datos.notificacionDesechos || 0).padStart(2,'0')}`
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -532,7 +634,7 @@ async function generarConsolidadoMovil(
         usuarios[usuario]
 
     if (!datos) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -634,7 +736,7 @@ ${cantidades}
 
 *NOVEDADES:*
 ${novedadesFinal}`
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -744,7 +846,7 @@ async function enviarPregInc(
 
     inc.i =
         0
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -956,7 +1058,7 @@ ${reporta}
 *"Lealtad Valor Orden"*
 
 *Adjunto Fotografía:*`
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1065,7 +1167,14 @@ console.log(
             try {
 
                 const msg = messages[0]
+const ahora = Math.floor(Date.now() / 1000)
 
+if (
+    msg.messageTimestamp &&
+    ahora - msg.messageTimestamp > 60
+) {
+    return
+}
                 if (!msg.message) return
 
                 if (msg.key.fromMe) return
@@ -1078,21 +1187,139 @@ const text =
     msg.message?.templateButtonReplyMessage
         ?.selectedId
 
-                if (!text) return
+if (!text) return
 
-                let mensaje =
+let mensaje =
     text.trim().toLowerCase()
 
-                const usuario =
-                    msg.key.remoteJid
+const usuario =
+    msg.key.remoteJid
 
-                const usuarios =
-                    cargarUsuarios()
+const codigosData =
+    cargarCodigos()
 
-                console.log(
-                    '📩',
-                    mensaje
-                )
+const codigoIngresado =
+    mensaje.toUpperCase()
+
+if (
+    codigosData.bloqueados[usuario] &&
+    Date.now() < codigosData.bloqueados[usuario].vence
+) {
+    return
+}
+
+if (
+    codigosData.bloqueados[usuario] &&
+    Date.now() >= codigosData.bloqueados[usuario].vence
+) {
+    delete codigosData.bloqueados[usuario]
+    delete codigosData.intentos[usuario]
+    guardarCodigos(codigosData)
+}
+
+if (
+    !esRadioperador(usuario) &&
+    !codigosData.accesosTemporales[usuario]
+) {
+
+    if (
+        codigosData.codigos[codigoIngresado] &&
+        !codigosData.codigos[codigoIngresado].usado &&
+        Date.now() <= codigosData.codigos[codigoIngresado].vence
+    ) {
+
+        delete codigosData.codigos[codigoIngresado]
+
+        codigosData.usados.push(codigoIngresado)
+
+        codigosData.accesosTemporales[usuario] = {
+            inicio: Date.now(),
+            vence: Date.now() + (8 * 60 * 60 * 1000)
+        }
+
+        delete codigosData.intentos[usuario]
+
+        guardarCodigos(codigosData)
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`✅ Acceso temporal habilitado.
+
+
+🤖 SAC - SISTEMA AUTOMATIZADO DE CARTILLAS 🤖
+
+Seleccione una opción:
+
+a) Cartillas de novedades
+b) Radioperadores
+c) Consolidado
+d) Restart`
+            }
+        )
+
+        return
+    }
+
+    codigosData.intentos[usuario] =
+        (codigosData.intentos[usuario] || 0) + 1
+
+    if (codigosData.intentos[usuario] >= 3) {
+
+        codigosData.bloqueados[usuario] = {
+            inicio: Date.now(),
+            vence: Date.now() + (72 * 60 * 60 * 1000)
+        }
+
+        delete codigosData.intentos[usuario]
+
+        guardarCodigos(codigosData)
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`🔒 BOT bloqueado.
+
+Número bloqueado por seguridad durante 72 horas.
+
+Solicite una nueva clave al radioperador.`
+            }
+        )
+
+        return
+    }
+
+    guardarCodigos(codigosData)
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`🔐 Ingrese código de acceso temporal.
+
+Intentos restantes: ${3 - codigosData.intentos[usuario]}`
+        }
+    )
+
+    return
+}
+
+const usuarios =
+    cargarUsuarios()
+
+console.log(
+    '📩',
+    mensaje
+)
+
 console.log(
     'PASO ACTUAL:',
     estados[usuario]?.paso
@@ -1109,12 +1336,12 @@ if (
 ) {
 
     delete estados[usuario]
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
             text:
-`🤖 SAC - SISTEMA AUTOMATIZADO DE CARTILLAS
+`🤖 SAC - SISTEMA AUTOMATIZADO DE CARTILLAS 🤖
 
 Seleccione una opción:
 
@@ -1149,18 +1376,20 @@ if (
     estados[usuario] = {
         paso: 'menu_radioperadores'
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
-            text:
+text:
 `📡 RADIOOPERADORES
 
 a) Formación Entrante
 b) Formación Saliente
 c) Datos Guardados
 d) Cartillas Incidencia EAS
-e) Volver`
+e) Generar código
+f) Desbloquear número
+g) Volver`
         }
     )
 
@@ -1200,7 +1429,7 @@ if (
             notificacionDesechos: 0
         }
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1235,7 +1464,7 @@ if (
     guardarUsuarios(
         usuarios
     )
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -1302,7 +1531,7 @@ if (
 
             }
         )
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1320,7 +1549,7 @@ ${lista}`
     if (mensaje === '2') {
 
         delete estados[usuario]
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1331,7 +1560,7 @@ ${lista}`
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1356,7 +1585,7 @@ if (
 
         estados[usuario].paso =
             'menu_consolidado_radioperadores'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1388,7 +1617,7 @@ o) Finalizar consolidado`
 
         estados[usuario].paso =
             'consolidado_movil_kilo'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1399,7 +1628,7 @@ o) Finalizar consolidado`
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1453,7 +1682,7 @@ if (
     }
 
     if (!opciones[mensaje]) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1486,7 +1715,7 @@ o) Finalizar consolidado`
 
     estados[usuario].paso =
         'cantidad_consolidado'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1514,7 +1743,7 @@ if (
         isNaN(cantidad) ||
         cantidad < 0
     ) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1544,7 +1773,7 @@ if (
 
     estados[usuario].paso =
         'menu_consolidado_radioperadores'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1588,7 +1817,7 @@ if (
 
     estados[usuario].paso =
         'consolidado_movil_golfo'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1633,7 +1862,7 @@ if (
     }
 
     else {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1657,7 +1886,7 @@ d) FULL`
 
     estados[usuario].paso =
         'consolidado_movil_auxiliar'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1689,7 +1918,7 @@ if (
 
         estados[usuario].paso =
             'consolidado_movil_nombre_auxiliar'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1732,7 +1961,7 @@ if (
 
 estados[usuario].paso =
     'menu_consolidado_movil'
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -1760,7 +1989,7 @@ o) Finalizar consolidado`
 )
 return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1810,7 +2039,7 @@ if (
 
 estados[usuario].paso =
     'menu_consolidado_movil'
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -1871,7 +2100,7 @@ if (
 
         estados[usuario].paso =
             'consolidado_movil_agregar_novedad'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1887,7 +2116,7 @@ b) No`
     }
 
     if (!opciones[mensaje]) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -1920,7 +2149,7 @@ o) Finalizar consolidado`
 
     estados[usuario].paso =
         'cantidad_consolidado_movil'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -1959,6 +2188,8 @@ if (
             inc: {}
         }
 
+        await pausaHumana(sock, usuario)
+
         await sock.sendMessage(
             usuario,
             {
@@ -1977,7 +2208,112 @@ d) Volver`
 
     else if (mensaje === 'e') {
 
+        if (!esRadioperador(usuario)) {
+
+            await pausaHumana(sock, usuario)
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+'❌ Solo los radioperadores registrados pueden generar códigos temporales.'
+                }
+            )
+
+            return
+        }
+
+        const codigo =
+            crearCodigoUnico()
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Código temporal generado:
+
+${codigo}
+
+Vigencia: 8 horas.
+Código de un solo uso.`
+            }
+        )
+
+        return
+    }
+
+    else if (mensaje === 'f') {
+
+        if (!esRadioperador(usuario)) {
+
+            await pausaHumana(sock, usuario)
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+'❌ Solo los radioperadores registrados pueden desbloquear números.'
+                }
+            )
+
+            return
+        }
+
+        const data =
+            cargarCodigos()
+
+        const bloqueados =
+            Object.keys(data.bloqueados || {})
+
+        if (bloqueados.length === 0) {
+
+            await pausaHumana(sock, usuario)
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+'No existen números bloqueados.'
+                }
+            )
+
+            return
+        }
+
+        estados[usuario] = {
+            paso: 'desbloquear_numero',
+            bloqueados
+        }
+
+        let lista =
+            'Números bloqueados:\n\n'
+
+        bloqueados.forEach((num, index) => {
+            lista += `${index + 1}) ${num.replace('@s.whatsapp.net', '').replace('@lid', '')}\n`
+        })
+
+        lista +=
+            '\nSeleccione el número a desbloquear:'
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text: lista
+            }
+        )
+
+        return
+    }
+
+    else if (mensaje === 'g') {
+
         delete estados[usuario]
+
+        await pausaHumana(sock, usuario)
 
         await sock.sendMessage(
             usuario,
@@ -1992,6 +2328,8 @@ d) Volver`
 
     else {
 
+        await pausaHumana(sock, usuario)
+
         await sock.sendMessage(
             usuario,
             {
@@ -2002,7 +2340,9 @@ a) Formación Entrante
 b) Formación Saliente
 c) Datos Guardados
 d) Cartillas Incidencia EAS
-e) Volver`
+e) Generar código
+f) Desbloquear número
+g) Volver`
             }
         )
 
@@ -2028,7 +2368,7 @@ if (
 
         estados[usuario].paso =
             'inc_den_menu'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2057,7 +2397,7 @@ g) Agresión`
 
         estados[usuario].paso =
             'inc_req_menu'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2083,7 +2423,7 @@ d) Colaboración de ATM`
 
         estados[usuario].paso =
             'inc_eas_det'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2101,7 +2441,7 @@ d) Colaboración de ATM`
             paso:
                 'menu_radioperadores'
         }
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2112,13 +2452,15 @@ a) Formación Entrante
 b) Formación Saliente
 c) Datos Guardados
 d) Cartillas Incidencia EAS
-e) Volver`
+e) Generar código
+f) Desbloquear número
+g) Volver`
             }
         )
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2129,6 +2471,78 @@ a) Denuncias Ciudadanas
 b) Requerimientos Ciudadanos
 c) Incidencias del EAS
 d) Volver`
+        }
+    )
+
+    return
+}
+
+// ======================
+// DESBLOQUEAR NUMERO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'desbloquear_numero'
+) {
+
+    const seleccion =
+        parseInt(mensaje)
+
+    const bloqueados =
+        estados[usuario].bloqueados
+
+    if (
+        isNaN(seleccion) ||
+        seleccion < 1 ||
+        seleccion > bloqueados.length
+    ) {
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'❌ Selección inválida. Ingrese un número de la lista.'
+            }
+        )
+
+        return
+    }
+
+    const numeroDesbloquear =
+        bloqueados[seleccion - 1]
+
+    const data =
+        cargarCodigos()
+
+    delete data.bloqueados[numeroDesbloquear]
+    delete data.intentos[numeroDesbloquear]
+
+    guardarCodigos(data)
+
+    estados[usuario] = {
+        paso: 'menu_radioperadores'
+    }
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`✅ Número desbloqueado correctamente.
+
+📡 RADIOOPERADORES
+
+a) Formación Entrante
+b) Formación Saliente
+c) Datos Guardados
+d) Cartillas Incidencia EAS
+e) Generar código
+f) Desbloquear número
+g) Volver`
         }
     )
 
@@ -2162,7 +2576,7 @@ if (
     }
 
     if (!opciones[mensaje]) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2187,7 +2601,7 @@ g) Agresión`
 
     estados[usuario].paso =
         'inc_nom'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2216,7 +2630,7 @@ if (
     }
 
     if (!opciones[mensaje]) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2238,7 +2652,7 @@ d) Colaboración de ATM`
 
     estados[usuario].paso =
         'inc_nom'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2264,7 +2678,7 @@ if (
 
     estados[usuario].paso =
         'inc_ced'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2300,7 +2714,7 @@ if (
         inc.i <
         inc.preguntas.length
     ) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2321,7 +2735,7 @@ estados[usuario] = {
     paso: 'inc_eas_menu',
     inc: {}
 }
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -2359,7 +2773,7 @@ if (
         paso: 'inc_eas_menu',
         inc: {}
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2390,7 +2804,7 @@ if (
 
     estados[usuario].paso =
         'inc_cel'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2416,7 +2830,7 @@ if (
 
     estados[usuario].paso =
         'inc_lug'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2469,7 +2883,7 @@ if (
         isNaN(cantidad) ||
         cantidad < 0
     ) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2491,7 +2905,7 @@ if (
 
     estados[usuario].paso =
         'menu_consolidado_movil'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2538,7 +2952,7 @@ if (
 
         estados[usuario].paso =
             'consolidado_movil_detalle_novedad'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2567,7 +2981,7 @@ if (
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2641,7 +3055,7 @@ estados[usuario] = {
     paso: 'seleccion_radioperadores',
     tipoFormacion: 'entrante'
 }
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -2664,7 +3078,7 @@ if (mensaje === 'b') {
         cargarFormaciones()
 
     if (!formaciones[usuario]) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2680,7 +3094,7 @@ if (mensaje === 'b') {
         paso: 'menu_saliente',
         tipoFormacion: 'saliente'
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2705,7 +3119,7 @@ if (mensaje === 'c') {
         formaciones[usuario]
 
     if (!datos) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2735,7 +3149,7 @@ if (mensaje === 'c') {
         datos.moviles?.length
             ? datos.moviles.join('-')
             : 'No registrado'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2779,7 +3193,7 @@ d) Volver`
     if (mensaje === 'd') {
 
         delete estados[usuario]
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2790,7 +3204,7 @@ d) Volver`
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2823,7 +3237,7 @@ if (mensaje === 'a') {
         paso: 'novedades_formacion',
         tipoFormacion: 'entrante'
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2845,7 +3259,7 @@ if (mensaje === 'b') {
         paso: 'novedades_formacion',
         tipoFormacion: 'saliente'
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2864,7 +3278,7 @@ b) Ingresar novedades`
 
         estados[usuario].paso =
             'modificar_saliente'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2887,7 +3301,7 @@ f) Cancelar`
     if (mensaje === 'd') {
 
         delete estados[usuario]
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2898,7 +3312,7 @@ f) Cancelar`
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -2931,7 +3345,7 @@ if (
 
         estados[usuario].paso =
             'novedades_formacion'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2953,7 +3367,7 @@ b) Ingresar novedades`
 
         estados[usuario].paso =
             'novedades_formacion'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2971,7 +3385,7 @@ b) Ingresar novedades`
     if (mensaje === 'c') {
 
         delete estados[usuario]
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -2982,7 +3396,7 @@ b) Ingresar novedades`
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3011,7 +3425,7 @@ if (
 
     estados[usuario].paso =
         'seleccion_radioperadores_mod'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3032,7 +3446,7 @@ d) Arboleda - Hidalgo`
 
         estados[usuario].paso =
             'mod_operativos'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3066,7 +3480,7 @@ x. Agregar nuevo servidor policial`
 
     estados[usuario].paso =
         'mod_policias_formacion'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3081,7 +3495,7 @@ x. Agregar nuevo servidor policial`
 
         estados[usuario].paso =
             'mod_moviles_operativos'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3100,7 +3514,7 @@ if(mensaje === 'e') {
 
     estados[usuario].paso =
         'elegir_tipo_formacion'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3119,7 +3533,7 @@ c) Volver`
     if (mensaje === 'f') {
 
         delete estados[usuario]
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3130,7 +3544,7 @@ c) Volver`
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3168,7 +3582,7 @@ if (
 
         estados[usuario].paso =
             'agregar_policia_formacion_mod'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3193,7 +3607,7 @@ if (
             isNaN(indice) ||
             !policias[indice]
         ) {
-
+await pausaHumana(sock, usuario)
             await sock.sendMessage(
                 usuario,
                 {
@@ -3216,7 +3630,7 @@ if (
 
     estados[usuario].paso =
         'datos_guardados_formacion'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3248,7 +3662,7 @@ if (
         text.trim()
 
     if (!nuevoPolicia) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3284,7 +3698,7 @@ if (
 
     estados[usuario].paso =
         'datos_guardados_formacion'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3319,7 +3733,7 @@ if (
         isNaN(cantidad) ||
         cantidad < 0
     ) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3340,7 +3754,7 @@ if (
     guardarFormaciones(
         formaciones
     )
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3351,7 +3765,7 @@ if (
 
  estados[usuario].paso =
     'elegir_tipo_formacion'
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -3397,7 +3811,7 @@ if (
         guardarFormaciones(
             formaciones
         )
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3408,7 +3822,7 @@ if (
 
    estados[usuario].paso =
     'elegir_tipo_formacion'
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -3431,7 +3845,7 @@ return
 
         estados[usuario].paso =
             'mod_movil_con_novedad'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3442,7 +3856,7 @@ return
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3471,7 +3885,7 @@ if (
         mensaje !== '188' &&
         mensaje !== '189'
     ) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3488,7 +3902,7 @@ if (
 
     estados[usuario].paso =
         'mod_detalle_novedad_movil'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3529,7 +3943,7 @@ if (
     guardarFormaciones(
         formaciones
     )
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3539,7 +3953,7 @@ if (
     )
 estados[usuario].paso =
     'elegir_tipo_formacion'
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -3570,7 +3984,7 @@ if (mensaje === 'a') {
 
     estados[usuario].paso =
         'elegir_tipo_formacion'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3592,7 +4006,7 @@ c) Volver`
 
         estados[usuario].paso =
             'modificar_saliente'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3614,7 +4028,7 @@ f) Cancelar`
     if (mensaje === 'c') {
 
         delete estados[usuario]
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3625,7 +4039,7 @@ f) Cancelar`
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3670,7 +4084,7 @@ if (
     }
 
     if (!grupos[mensaje]) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3703,7 +4117,7 @@ d) Arboleda Abraham - Hidalgo Jeremy`
 
     estados[usuario].paso =
         'cantidad_operativos'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3744,7 +4158,7 @@ if (
     }
 
     if (!grupos[mensaje]) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3770,7 +4184,7 @@ d) Arboleda - Hidalgo`
     guardarFormaciones(
         formaciones
     )
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3781,7 +4195,7 @@ d) Arboleda - Hidalgo`
 
     estados[usuario].paso =
         'elegir_tipo_formacion'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3819,7 +4233,7 @@ if (
         isNaN(cantidad) ||
         cantidad < 0
     ) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -3858,7 +4272,7 @@ policias.forEach((policia, index) => {
 
 estados[usuario].paso =
     'presencia_policial'
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -3902,7 +4316,7 @@ if (
             isNaN(indice) ||
             !policias[indice]
         ) {
-
+await pausaHumana(sock, usuario)
             await sock.sendMessage(
                 usuario,
                 {
@@ -3925,7 +4339,7 @@ if (
 
     estados[usuario].paso =
         'moviles_operativos'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -3972,7 +4386,7 @@ if (
 
         estados[usuario].paso =
             'elegir_tipo_formacion'
-
+await pausaHumana(sock, usuario)
             await sock.sendMessage(
     usuario,
     {
@@ -3995,7 +4409,7 @@ c) Volver`
 
         estados[usuario].paso =
             'movil_con_novedad'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4006,7 +4420,7 @@ c) Volver`
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -4035,7 +4449,7 @@ if (
         mensaje !== '188' &&
         mensaje !== '189'
     ) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4052,7 +4466,7 @@ if (
 
     estados[usuario].paso =
         'detalle_novedad_movil'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -4093,7 +4507,7 @@ if (
 
     estados[usuario].paso =
     'elegir_tipo_formacion'
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -4147,7 +4561,7 @@ if (
             paso: 'datos_guardados_formacion',
             tipoFormacion: tipoFormacionActual
         }
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4172,7 +4586,7 @@ d) Volver`
 
         estados[usuario].paso =
             'detalle_novedades_formacion'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4183,7 +4597,7 @@ d) Volver`
 
         return
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -4230,7 +4644,7 @@ if (
         paso: 'datos_guardados_formacion',
         tipoFormacion: tipoFormacionActual
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -4263,7 +4677,7 @@ if (
         estados[usuario] = {
             paso: 'menu_memoria'
         }
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4290,7 +4704,7 @@ POLICIA: ${usuarios[usuario].policia}
     estados[usuario] = {
         paso: 'jp'
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -4332,7 +4746,7 @@ if (
 
             }
         )
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4351,7 +4765,7 @@ if (
         estados[usuario] = {
             paso: 'editar_datos'
         }
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4385,7 +4799,7 @@ if (
         estados[usuario] = {
             paso: 'nuevo_jp'
         }
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4403,7 +4817,7 @@ if (
         estados[usuario] = {
             paso: 'nuevo_movil'
         }
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4421,7 +4835,7 @@ if (
         estados[usuario] = {
             paso: 'nuevo_cp'
         }
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4454,7 +4868,7 @@ policias.forEach((policia, index) => {
     estados[usuario] = {
         paso: 'nuevo_policia'
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -4487,7 +4901,7 @@ if (
 estados[usuario] = {
     paso: 'continuar_edicion'
 }
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -4529,7 +4943,7 @@ if (
     }
 
     else {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4554,7 +4968,7 @@ if (
 estados[usuario] = {
     paso: 'continuar_edicion'
 }
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -4593,7 +5007,7 @@ if (
 estados[usuario] = {
     paso: 'continuar_edicion'
 }
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -4639,7 +5053,7 @@ if (
             isNaN(indice) ||
             !policias[indice]
         ) {
-
+await pausaHumana(sock, usuario)
             await sock.sendMessage(
                 usuario,
                 {
@@ -4667,7 +5081,7 @@ if (
     estados[usuario] = {
         paso: 'continuar_edicion'
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -4699,7 +5113,7 @@ if (
         estados[usuario] = {
             paso: 'editar_datos'
         }
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4737,7 +5151,7 @@ if (
 
             }
         )
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -4749,7 +5163,7 @@ if (
         return
 
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -4782,7 +5196,7 @@ if (
 
                     estados[usuario]
                         .paso = 'movil'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -4832,7 +5246,7 @@ if (
 
                     estados[usuario]
                         .paso = 'cp'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -4880,7 +5294,7 @@ policias.forEach((policia, index) => {
 
     estados[usuario]
         .paso = 'policia'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -4918,7 +5332,7 @@ if (
             isNaN(indice) ||
             !policias[indice]
         ) {
-
+await pausaHumana(sock, usuario)
             await sock.sendMessage(
                 usuario,
                 {
@@ -4965,7 +5379,7 @@ if (
 
         }
     )
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -5021,7 +5435,7 @@ if (
 
         }
     )
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -5059,7 +5473,7 @@ if (
 
     // SI NO EXISTE LA DIRECCION
     if (!direccion) {
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -5097,7 +5511,7 @@ if (
                     estados[usuario]
                         .paso =
                         'causa'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5177,7 +5591,7 @@ const causas = {
                         causas[mensaje]
 
                     if (!causa) {
-
+await pausaHumana(sock, usuario)
                         await sock.sendMessage(
                             usuario,
                             {
@@ -5208,7 +5622,7 @@ const causas = {
                         estados[usuario]
                             .paso =
                             'agresivos'
-
+await pausaHumana(sock, usuario)
                         await sock.sendMessage(
                             usuario,
                             {
@@ -5221,7 +5635,92 @@ const causas = {
 
                     }
 
-                    // ======================
+                    // REQUERIMIENTO
+
+if (
+    mensaje === 'c'
+) {
+
+    estados[usuario].paso =
+        'solicitante_requerimiento'
+
+    await pausaHumana(
+        sock,
+        usuario
+    )
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Quién solicita el requerimiento?
+
+a) ECO-12
+b) CR
+c) OJ1
+d) Jefe de Control Municipal
+e) Lima Oscar
+f) Sircon Andrade
+g) Sr. Figallo
+h) Sr. Alex Anchundia`
+        }
+    )
+
+    return
+}
+
+// RETIRO TEMPORAL
+
+if (
+    mensaje === 'b'
+) {
+
+    estados[usuario].paso =
+        'actividad_comercial_retiro'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Indique la actividad comercial del comerciante:'
+        }
+    )
+
+    return
+}                    
+
+// COLABORACIÓN CON OTRAS ENTIDADES
+
+if (
+    mensaje === 'f'
+) {
+
+    estados[usuario].paso =
+        'entidad_colaboracion'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Seleccione la entidad:
+
+a) Policía
+b) ATM
+c) CTE
+d) Bomberos
+e) Paramédicos
+f) Fuerzas Armadas`
+        }
+    )
+
+    return
+}
+
+// ======================
 // ACCIDENTE
 // ======================
 
@@ -5229,7 +5728,7 @@ if (mensaje === 'i') {
 
     estados[usuario].paso =
         'tipo_accidente'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -5274,7 +5773,7 @@ await generarCartilla(
 estados[usuario].paso =
     'otra_cartilla'
 
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -5289,6 +5788,359 @@ await sock.sendMessage(
 return
 
                 }
+
+// ======================
+// ACTIVIDAD COMERCIAL RETIRO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'actividad_comercial_retiro'
+) {
+
+    estados[usuario].actividadComercial =
+        text
+
+    estados[usuario].paso =
+        'elementos_retiro'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Describa los elementos retirados temporalmente:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// ELEMENTOS RETIRO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'elementos_retiro'
+) {
+
+    estados[usuario].elementosRetiro =
+        text
+
+    estados[usuario].paso =
+        'cantidad_retiro'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Indique la cantidad aproximada de elementos retirados:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// CANTIDAD RETIRO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'cantidad_retiro'
+) {
+
+    estados[usuario].cantidadRetiro =
+        text
+
+    const procedimiento =
+`mediante operativo conjunto con móviles que se encontraban realizando recorridos dentro del circuito EAS CEIBOS, se procedió a ejecutar acciones de control sobre vendedores autónomos no regularizados que se encontraban ocupando el espacio público.
+
+Durante el procedimiento se identificó a un comerciante dedicado a la actividad de "${estados[usuario].actividadComercial}", quien se negaba a retirarse voluntariamente del lugar pese a las indicaciones emitidas por el personal operativo.
+
+En cumplimiento de las ordenanzas municipales referentes al uso adecuado del espacio y la vía pública, se procedió a realizar el retiro temporal de mercadería, detallándose los siguientes elementos:
+
+${estados[usuario].elementosRetiro}
+
+Cantidad aproximada de elementos retirados temporalmente: ${estados[usuario].cantidadRetiro}.`
+
+    await generarCartilla(
+        sock,
+        usuario,
+        procedimiento
+    )
+
+    estados[usuario] = {
+        paso: 'otra_cartilla'
+    }
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Desea ingresar otra cartilla?
+
+1. SI
+2. NO`
+        }
+    )
+
+    return
+}
+
+// ======================
+// SOLICITANTE REQUERIMIENTO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'solicitante_requerimiento'
+) {
+
+    const solicitantes = {
+        a: 'ECO-12',
+        b: 'CR',
+        c: 'OJ1',
+        d: 'Jefe de Control Municipal',
+        e: 'Lima Oscar',
+        f: 'Sircon Andrade',
+        g: 'Sr. Figallo',
+        h: 'Sr. Alex Anchundia'
+    }
+
+    const solicitante =
+        solicitantes[mensaje]
+
+    if (!solicitante) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'❌ Opción inválida'
+            }
+        )
+
+        return
+    }
+
+    estados[usuario].solicitante =
+        solicitante
+
+    estados[usuario].paso =
+        'tipo_requerimiento'
+
+    await pausaHumana(
+        sock,
+        usuario
+    )
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Qué requerimiento realizará?
+
+a) Requerimiento
+b) Punto martillo
+c) Ronda disuasiva
+d) Presencia de Agente de Control
+e) Operativo en conjunto`
+        }
+    )
+
+    return
+}
+
+// ======================
+// TIPO REQUERIMIENTO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'tipo_requerimiento'
+) {
+
+        const usuarios =
+        cargarUsuarios()
+
+    const datos =
+        usuarios[usuario]
+
+let accion = ''
+
+if (mensaje === 'a') {
+
+    accion =
+`se procede a atender requerimiento en el sector de ${datos.direccion} para apoyo a la seguridad ciudadana.`
+}
+
+if (mensaje === 'b') {
+
+    accion =
+`se procede a ejecutar punto martillo en ${datos.direccion} para control del espacio público y apoyo a la seguridad ciudadana.`
+}
+
+if (mensaje === 'c') {
+
+    accion =
+`se procede a realizar ronda disuasiva a lo largo de ${datos.direccion} para apoyo a la seguridad ciudadana.`
+}
+
+if (mensaje === 'd') {
+
+    accion =
+`se procede a brindar presencia de Agente de Control en ${datos.direccion} para apoyo a la seguridad ciudadana.`
+}
+
+if (mensaje === 'e') {
+
+    accion =
+`se procede a ejecutar operativo en conjunto en ${datos.direccion} para control del espacio público y apoyo a la seguridad ciudadana.`
+}
+
+if (!accion) {
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'❌ Opción inválida'
+        }
+    )
+
+    return
+}
+
+const procedimiento =
+`por órdenes de ${estados[usuario].solicitante} ${accion}`
+
+    await generarCartilla(
+        sock,
+        usuario,
+        procedimiento
+    )
+
+    estados[usuario] = {
+        paso: 'otra_cartilla'
+    }
+
+    await pausaHumana(
+        sock,
+        usuario
+    )
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Desea ingresar otra cartilla?
+
+1. SI
+2. NO`
+        }
+    )
+
+    return
+}
+
+// ======================
+// ENTIDAD COLABORACION
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'entidad_colaboracion'
+) {
+
+    const entidades = {
+        a: 'Policía',
+        b: 'ATM',
+        c: 'CTE',
+        d: 'Bomberos',
+        e: 'Paramédicos',
+        f: 'Fuerzas Armadas'
+    }
+
+    const entidad =
+        entidades[mensaje]
+
+    if (!entidad) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'❌ Opción inválida'
+            }
+        )
+
+        return
+    }
+
+    estados[usuario].entidadColaboracion =
+        entidad
+
+    estados[usuario].paso =
+        'motivo_colaboracion'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Especifique el motivo de la colaboración:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// MOTIVO COLABORACION
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'motivo_colaboracion'
+) {
+
+    const procedimiento =
+`se procedió con la colaboración a los señores de ${estados[usuario].entidadColaboracion} debido a ${text}.`
+
+    await generarCartilla(
+        sock,
+        usuario,
+        procedimiento
+    )
+
+    estados[usuario] = {
+        paso: 'otra_cartilla'
+    }
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Desea ingresar otra cartilla?
+
+1. SI
+2. NO`
+        }
+    )
+
+    return
+}
+
                 // ======================
                 // AGRESIVOS
                 // ======================
@@ -5306,7 +6158,7 @@ return
                         estados[usuario]
                             .paso =
                             'colaboracion'
-
+await pausaHumana(sock, usuario)
                         await sock.sendMessage(
                             usuario,
                             {
@@ -5332,7 +6184,7 @@ await generarCartilla(
 estados[usuario] = {
     paso: 'otra_cartilla'
 }
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -5386,7 +6238,7 @@ return
                     estados[usuario] = {
                         paso: 'otra_cartilla'
                     }
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5433,7 +6285,7 @@ return
                     }
 
                     else {
-
+await pausaHumana(sock, usuario)
                         await sock.sendMessage(
                             usuario,
                             {
@@ -5454,7 +6306,7 @@ return
 
                     estados[usuario].paso =
                         'heridos'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5479,7 +6331,7 @@ return
 
                         estados[usuario].paso =
                             'cantidad_heridos'
-
+await pausaHumana(sock, usuario)
                         await sock.sendMessage(
                             usuario,
                             {
@@ -5500,7 +6352,7 @@ return
 
                     estados[usuario].paso =
                         'muertos'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5530,7 +6382,7 @@ return
 
                     estados[usuario].paso =
                         'nombres_heridos'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5561,7 +6413,7 @@ return
 
                     estados[usuario].paso =
                         'muertos'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5586,7 +6438,7 @@ return
 
                         estados[usuario].paso =
                             'criminalistica'
-
+await pausaHumana(sock, usuario)
                         await sock.sendMessage(
                             usuario,
                             {
@@ -5607,7 +6459,7 @@ return
 
                     estados[usuario].paso =
                         'atm'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5640,7 +6492,7 @@ mensaje === '1'
 
                     estados[usuario].paso =
                         'atm'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5665,7 +6517,7 @@ mensaje === '1'
 
                         estados[usuario].paso =
                             'datos_atm'
-
+await pausaHumana(sock, usuario)
                         await sock.sendMessage(
                             usuario,
                             {
@@ -5686,7 +6538,7 @@ mensaje === '1'
 
                     estados[usuario].paso =
                         'ambulancia'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5717,7 +6569,7 @@ mensaje === '1'
 
                     estados[usuario].paso =
                         'ambulancia'
-
+await pausaHumana(sock, usuario)
                     await sock.sendMessage(
                         usuario,
                         {
@@ -5743,7 +6595,7 @@ if (
 
         estados[usuario].paso =
             'datos_ambulancia'
-
+await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
@@ -5767,7 +6619,7 @@ guardarUsuarios(usuarios)
 
 estados[usuario].paso =
     'placas'
-
+await pausaHumana(sock, usuario)
 await sock.sendMessage(
     usuario,
     {
@@ -5798,7 +6650,7 @@ if (
 
     estados[usuario].paso =
         'conductores'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -5828,7 +6680,7 @@ if (
 
     estados[usuario].paso =
         'danos'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -5858,7 +6710,7 @@ if (
 
     estados[usuario].paso =
         'cierre_vial'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -5891,7 +6743,7 @@ mensaje === '1'
 
     estados[usuario].paso =
         'traslado'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -5937,7 +6789,7 @@ if (
     estados[usuario] = {
         paso: 'otra_cartilla'
     }
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
@@ -5971,7 +6823,7 @@ if (
 
     estados[usuario].paso =
         'placas'
-
+await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
