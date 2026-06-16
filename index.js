@@ -7493,8 +7493,18 @@ if (
         const datos =
             usuarios[usuario]
 
-        const procedimiento =
-`se registró ${datos.tipoAccidente}; ${datos.heridos}; ${datos.muertos || ''}; ${datos.criminalistica || ''}; ${datos.atm}; ${datos.ambulancia}; vehículos involucrados: ${datos.placas}; conductores: ${datos.conductores}; daños registrados: ${datos.danos}; ${datos.cierreVial}; ${datos.traslado}.`
+const procedimiento =
+`me permito informar que se registró un ${datos.tipoAccidente} en el sector asignado.
+
+Como resultado del incidente se reportó ${datos.heridos.toLowerCase()} y ${datos.muertos.toLowerCase()}.
+
+Durante la atención de la emergencia se contó con la siguiente colaboración institucional: ${datos.atm}; ${datos.ambulancia}; ${datos.criminalistica || 'sin intervención de Criminalística'}.
+
+Los vehículos involucrados corresponden a las placas ${datos.placas}, siendo sus conductores ${datos.conductores}.
+
+Entre los daños observados se registró: ${datos.danos}.
+
+Así mismo, ${datos.cierreVial.toLowerCase()} y ${datos.traslado.toLowerCase()}.`
 
         await generarCartilla(
             sock,
@@ -7522,6 +7532,68 @@ if (
         return
     }
 }
+
+// ======================
+// CASA DE SALUD
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'casa_salud'
+) {
+
+    usuarios[usuario] = {
+        ...usuarios[usuario],
+        casaSalud: text
+    }
+
+    guardarUsuarios(usuarios)
+
+    const datos =
+        usuarios[usuario]
+
+const procedimiento =
+`me permito informar que se registró un ${datos.tipoAccidente} en el sector asignado.
+
+Como resultado del incidente se reportó ${datos.heridos.toLowerCase()} y ${datos.muertos.toLowerCase()}.
+
+Durante la atención de la emergencia se contó con la siguiente colaboración institucional: ${datos.atm}; ${datos.ambulancia}; ${datos.criminalistica || 'sin intervención de Criminalística'}.
+
+Los vehículos involucrados corresponden a las placas ${datos.placas}, siendo sus conductores ${datos.conductores}.
+
+Entre los daños observados se registró: ${datos.danos}.
+
+Así mismo, ${datos.cierreVial.toLowerCase()}.
+
+Debido a las lesiones presentadas, se efectuó el traslado de la persona afectada hacia ${datos.casaSalud} para su respectiva valoración y atención médica.`
+
+
+    await generarCartilla(
+        sock,
+        usuario,
+        procedimiento
+    )
+
+    estados[usuario] = {
+        paso: 'otra_cartilla'
+    }
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Desea ingresar otra cartilla?
+
+1. SI
+2. NO`
+        }
+    )
+
+    return
+}
+
 // ======================
 // DATOS AMBULANCIA
 // ======================
