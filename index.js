@@ -242,7 +242,7 @@ function crearCodigoUnico() {
 
     data.codigos[codigo] = {
         creado: Date.now(),
-        vence: Date.now() + (8 * 60 * 60 * 1000),
+        vence: Date.now() + (5 * 60 * 1000),
         usado: false
     }
 
@@ -1232,10 +1232,7 @@ if (
 
         codigosData.usados.push(codigoIngresado)
 
-        codigosData.accesosTemporales[usuario] = {
-            inicio: Date.now(),
-            vence: Date.now() + (8 * 60 * 60 * 1000)
-        }
+        codigosData.accesosTemporales[usuario] = true
 
         delete codigosData.intentos[usuario]
 
@@ -1250,7 +1247,7 @@ if (
 `✅ Acceso temporal habilitado.
 
 
-🤖 SAC - SISTEMA AUTOMATIZADO DE CARTILLAS 🤖
+🤖 *SAC - SISTEMA AUTOMATIZADO DE CARTILLAS* 🤖
 
 Seleccione una opción:
 
@@ -2206,25 +2203,9 @@ d) Volver`
         return
     }
 
-    else if (mensaje === 'e') {
+else if (mensaje === 'e') {
 
-        if (!esRadioperador(usuario)) {
-
-            await pausaHumana(sock, usuario)
-
-            await sock.sendMessage(
-                usuario,
-                {
-                    text:
-'❌ Solo los radioperadores registrados pueden generar códigos temporales.'
-                }
-            )
-
-            return
-        }
-
-        const codigo =
-            crearCodigoUnico()
+    if (!esRadioperador(usuario)) {
 
         await pausaHumana(sock, usuario)
 
@@ -2232,17 +2213,42 @@ d) Volver`
             usuario,
             {
                 text:
-`Código temporal generado:
-
-${codigo}
-
-Vigencia: 8 horas.
-Código de un solo uso.`
+'❌ Solo los radioperadores registrados pueden generar códigos temporales.'
             }
         )
 
         return
     }
+
+    const data =
+        cargarCodigos()
+
+    data.accesosTemporales = {}
+
+    guardarCodigos(data)
+
+    const codigo =
+        crearCodigoUnico()
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Código temporal generado:
+
+${codigo}
+
+Vigencia: 8 horas.
+Código de un solo uso.
+
+Se invalidaron los accesos temporales anteriores.`
+        }
+    )
+
+    return
+}
 
     else if (mensaje === 'f') {
 
@@ -2414,38 +2420,75 @@ d) Colaboración de ATM`
         return
     }
 
-    if (mensaje === 'c') {
+if (mensaje === 'c') {
 
-        estados[usuario].inc = {
-            tipoP:
-                'NOVEDADES EN EAS CEIBOS'
-        }
+    if (estados[usuario].desdeColaboracionCiudadana) {
 
         estados[usuario].paso =
-            'inc_eas_det'
-await pausaHumana(sock, usuario)
+            'causa'
+
+        delete estados[usuario].desdeColaboracionCiudadana
+
+        await pausaHumana(sock, usuario)
+
         await sock.sendMessage(
             usuario,
             {
                 text:
-'Describa el motivo de la novedad:'
+`Seleccione la causa:
+
+a) Desalojo de vendedores
+b) Retiro temporal
+c) Requerimiento
+d) Rondas disuasivas
+e) Punto martillo
+f) Colaboración con otras entidades
+g) Colaboración ciudadana
+h) Accidente
+i) Permiso de ausentismo`
             }
         )
 
         return
     }
 
-    if (mensaje === 'd') {
+    estados[usuario].inc = {
+        tipoP:
+            'NOVEDADES EN EAS CEIBOS'
+    }
 
-        estados[usuario] = {
-            paso:
-                'menu_radioperadores'
+    estados[usuario].paso =
+        'inc_eas_det'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Describa el motivo de la novedad:'
         }
-await pausaHumana(sock, usuario)
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
+    )
+
+    return
+}
+
+if (
+    mensaje === 'd' &&
+    !estados[usuario].desdeColaboracionCiudadana
+) {
+
+    estados[usuario] = {
+        paso:
+            'menu_radioperadores'
+    }
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
 `📡 RADIOOPERADORES
 
 a) Formación Entrante
@@ -2455,25 +2498,30 @@ d) Cartillas Incidencia EAS
 e) Generar código
 f) Desbloquear número
 g) Volver`
-            }
-        )
+        }
+    )
 
-        return
-    }
-await pausaHumana(sock, usuario)
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`Opción inválida.
+    return
+}
+
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+estados[usuario].desdeColaboracionCiudadana
+    ? `Opción inválida.
+
+a) Denuncias Ciudadanas
+b) Requerimientos Ciudadanos
+c) Volver`
+    : `Opción inválida.
 
 a) Denuncias Ciudadanas
 b) Requerimientos Ciudadanos
 c) Incidencias del EAS
 d) Volver`
-        }
-    )
-
+    }
+)
     return
 }
 
@@ -3578,21 +3626,23 @@ if (
     const policias =
         cargarPolicias()
 
-    if (mensaje === 'x') {
+if (mensaje === 'x') {
 
-        estados[usuario].paso =
-            'agregar_policia_formacion_mod'
-await pausaHumana(sock, usuario)
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
+    estados[usuario].paso =
+        'agregar_policia_formacion'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
 'Ingrese rango y nombre del nuevo servidor policial'
-            }
-        )
+        }
+    )
 
-        return
-    }
+    return
+}
 
     if (mensaje === '0') {
 
@@ -3843,16 +3893,22 @@ return
         mensaje === 'no'
     ) {
 
-        estados[usuario].paso =
-            'mod_movil_con_novedad'
-await pausaHumana(sock, usuario)
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Indique qué móvil tuvo novedad: 187, 188 o 189'
-            }
-        )
+estados[usuario].paso =
+    'mod_seleccionar_movil_novedad'
+
+estados[usuario].novedadesMoviles = []
+
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`Seleccione el móvil que tuvo novedad:
+
+a) Móvil 187
+b) Móvil 188
+c) Móvil 189`
+    }
+)
 
         return
     }
@@ -3982,22 +4038,25 @@ if (
 
 if (mensaje === 'a') {
 
-    estados[usuario].paso =
-        'elegir_tipo_formacion'
+estados[usuario].paso =
+    'novedades_formacion'
+
+estados[usuario].tipoFormacion =
+    'saliente'
+
 await pausaHumana(sock, usuario)
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`¿Qué formación desea generar?
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`Novedades de formación:
 
-a) Formación Entrante
-b) Formación Saliente
-c) Volver`
-        }
-    )
+a) Sin novedades
+b) Ingresar novedades`
+    }
+)
 
-    return
+return
 }
     if (mensaje === 'b') {
 
@@ -4263,12 +4322,14 @@ let menuPolicias =
 
 0. Sin servidor policial
 `
-
 policias.forEach((policia, index) => {
     menuPolicias +=
 `${index + 1}. ${policia}
 `
 })
+menuPolicias +=
+`
+x. Agregar nuevo servidor policial`
 
 estados[usuario].paso =
     'presencia_policial'
@@ -4308,6 +4369,24 @@ if (
         formaciones[usuario].policias = []
 
     } else {
+
+if (mensaje === 'x') {
+
+    estados[usuario].paso =
+        'agregar_policia_formacion'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Ingrese rango y nombre del nuevo servidor policial'
+        }
+    )
+
+    return
+}
 
         const indice =
             parseInt(mensaje) - 1
@@ -4355,6 +4434,80 @@ b) No`
 }
 
 // ======================
+// AGREGAR POLICIA FORMACION
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'agregar_policia_formacion'
+) {
+
+    const nuevoPolicia =
+        text.trim()
+
+    if (!nuevoPolicia) {
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Ingrese un nombre válido'
+            }
+        )
+
+        return
+    }
+
+    const policias =
+        cargarPolicias()
+
+    policias.push(
+        nuevoPolicia
+    )
+
+    guardarPolicias(
+        policias
+    )
+
+    const formaciones =
+        cargarFormaciones()
+
+    if (!formaciones[usuario]) {
+        formaciones[usuario] = {}
+    }
+
+    formaciones[usuario].policias = [
+        nuevoPolicia
+    ]
+
+    guardarFormaciones(
+        formaciones
+    )
+
+    estados[usuario].paso =
+        'moviles_operativos'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`✅ Servidor policial agregado y seleccionado.
+
+¿Todos los móviles estuvieron operativos?
+
+a) Sí
+b) No`
+        }
+    )
+
+    return
+}
+
+// ======================
 // MOVILES OPERATIVOS
 // ======================
 
@@ -4384,18 +4537,20 @@ if (
             formaciones
         )
 
-        estados[usuario].paso =
-            'elegir_tipo_formacion'
+estados[usuario].paso =
+    'novedades_formacion'
+
+estados[usuario].tipoFormacion =
+    'entrante'
 await pausaHumana(sock, usuario)
             await sock.sendMessage(
     usuario,
     {
         text:
-`¿Qué formación desea generar?
+`Novedades de formación:
 
-a) Formación Entrante
-b) Formación Saliente
-c) Volver`
+a) Sin novedades
+b) Ingresar novedades`
     }
 )
 
@@ -4407,14 +4562,20 @@ c) Volver`
         mensaje === 'no'
     ) {
 
-        estados[usuario].paso =
-            'movil_con_novedad'
+estados[usuario].paso =
+    'seleccionar_movil_novedad'
+
+estados[usuario].novedadesMoviles = []
 await pausaHumana(sock, usuario)
         await sock.sendMessage(
             usuario,
             {
                 text:
-'Indique qué móvil tuvo novedad: 187, 188 o 189'
+`Seleccione el móvil que tuvo novedad:
+
+a) Móvil 187
+b) Móvil 188
+c) Móvil 189`
             }
         )
 
@@ -4434,94 +4595,135 @@ b) No`
 
     return
 }
-
 // ======================
-// MOVIL CON NOVEDAD
+// SELECCIONAR MÓVIL CON NOVEDAD
 // ======================
+if (estados[usuario]?.paso === 'seleccionar_movil_novedad') {
 
-if (
-    estados[usuario]?.paso ===
-    'movil_con_novedad'
-) {
+    const moviles = {
+        a: '187',
+        b: '188',
+        c: '189'
+    }
 
-    if (
-        mensaje !== '187' &&
-        mensaje !== '188' &&
-        mensaje !== '189'
-    ) {
-await pausaHumana(sock, usuario)
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese un móvil válido: 187, 188 o 189'
-            }
-        )
+    if (!moviles[mensaje]) {
+        await sock.sendMessage(usuario, {
+            text:
+`Opción inválida.
 
+Seleccione el móvil que tuvo novedad:
+
+a) Móvil 187
+b) Móvil 188
+c) Móvil 189`
+        })
         return
     }
 
-    estados[usuario].movilNovedad =
-        mensaje
+    estados[usuario].movilNovedadActual = moviles[mensaje]
+    estados[usuario].paso = 'detalle_novedad_movil'
 
-    estados[usuario].paso =
-        'detalle_novedad_movil'
-await pausaHumana(sock, usuario)
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`Indique la novedad del móvil ${mensaje}`
-        }
-    )
+    await sock.sendMessage(usuario, {
+        text: `Describa la novedad del móvil ${moviles[mensaje]}:`
+    })
 
     return
 }
 
 // ======================
-// DETALLE NOVEDAD MOVIL
+// DETALLE DE NOVEDAD DEL MÓVIL
 // ======================
+if (estados[usuario]?.paso === 'detalle_novedad_movil') {
 
-if (
-    estados[usuario]?.paso ===
-    'detalle_novedad_movil'
-) {
+    estados[usuario].novedadesMoviles.push({
+        movil: estados[usuario].movilNovedadActual,
+        detalle: text
+    })
 
-    const formaciones =
-        cargarFormaciones()
+    estados[usuario].paso = 'otra_novedad_movil'
 
-    const movil =
-        estados[usuario].movilNovedad
+    await sock.sendMessage(usuario, {
+        text:
+`¿Desea ingresar otra novedad?
 
-    formaciones[usuario].moviles =
-        formaciones[usuario].moviles.filter(
-            m => m !== movil
-        )
+a) Sí, agregar otra novedad
+b) No, continuar`
+    })
+
+    return
+}
+
+// ======================
+// OTRA NOVEDAD DE MÓVIL
+// ======================
+if (estados[usuario]?.paso === 'otra_novedad_movil') {
+
+    if (mensaje === 'a') {
+
+        estados[usuario].paso = 'seleccionar_movil_novedad'
+
+        await sock.sendMessage(usuario, {
+            text:
+`Seleccione el móvil que tuvo novedad:
+
+a) Móvil 187
+b) Móvil 188
+c) Móvil 189`
+        })
+
+        return
+    }
+
+    if (mensaje === 'b') {
+
+    const formaciones = cargarFormaciones()
 
     formaciones[usuario].novedadMoviles =
-        `Móvil ${movil}: ${text}`
+        estados[usuario].novedadesMoviles
+            .map(n => `Móvil ${n.movil}: ${n.detalle}`)
+            .join('\n')
 
-    guardarFormaciones(
-        formaciones
+    const movilesConNovedad =
+        estados[usuario].novedadesMoviles
+            .map(n => n.movil)
+
+    formaciones[usuario].moviles =
+        [
+            '187',
+            '188',
+            '189'
+        ].filter(
+            m => !movilesConNovedad.includes(m)
+        )
+
+    formaciones[usuario].novedades =
+        ''
+
+    guardarFormaciones(formaciones)
+
+    await generarFormacion(
+        sock,
+        usuario,
+        estados[usuario].tipoFormacion
     )
 
-    estados[usuario].paso =
-    'elegir_tipo_formacion'
-await pausaHumana(sock, usuario)
-await sock.sendMessage(
-    usuario,
-    {
-        text:
-`¿Qué formación desea generar?
-
-a) Formación Entrante
-b) Formación Saliente
-c) Volver`
+    estados[usuario] = {
+        paso: 'datos_guardados_formacion',
+        tipoFormacion: estados[usuario].tipoFormacion
     }
-)
 
-return
-    
+    return
+}
+
+    await sock.sendMessage(usuario, {
+        text:
+`Opción inválida.
+
+a) Sí, agregar otra novedad
+b) No, continuar`
+    })
+
+    return
 }
 
 // ======================
@@ -4545,7 +4747,7 @@ if (
     ) {
 
         formaciones[usuario].novedades =
-            'Sin novedades'
+            'Sin Novedades'
 
         guardarFormaciones(
             formaciones
@@ -4584,17 +4786,23 @@ d) Volver`
         mensaje === 'sí'
     ) {
 
-        estados[usuario].paso =
-            'detalle_novedades_formacion'
-await pausaHumana(sock, usuario)
-        await sock.sendMessage(
-            usuario,
-            {
-                text:
-'Ingrese las novedades de la formación'
-            }
-        )
+estados[usuario].paso =
+    'seleccionar_movil_novedad'
 
+estados[usuario].novedadesMoviles = []
+
+await pausaHumana(sock, usuario)
+await sock.sendMessage(
+    usuario,
+    {
+        text:
+`Seleccione el móvil que tuvo novedad:
+
+a) Móvil 187
+b) Móvil 188
+c) Móvil 189`
+    }
+)
         return
     }
 await pausaHumana(sock, usuario)
@@ -4606,55 +4814,6 @@ await pausaHumana(sock, usuario)
 
 a) Sin novedades
 b) Ingresar novedades`
-        }
-    )
-
-    return
-}
-
-// ======================
-// DETALLE NOVEDADES FORMACION
-// ======================
-
-if (
-    estados[usuario]?.paso ===
-    'detalle_novedades_formacion'
-) {
-
-    const formaciones =
-        cargarFormaciones()
-
-    formaciones[usuario].novedades =
-        text
-
-    guardarFormaciones(
-        formaciones
-    )
-
-    const tipoFormacionActual =
-        estados[usuario].tipoFormacion
-
-    await generarFormacion(
-        sock,
-        usuario,
-        tipoFormacionActual
-    )
-
-    estados[usuario] = {
-        paso: 'datos_guardados_formacion',
-        tipoFormacion: tipoFormacionActual
-    }
-await pausaHumana(sock, usuario)
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
-`¿Qué desea hacer?
-
-a) Formación Entrante
-b) Formación Saliente
-c) Modificar datos
-d) Volver`
         }
     )
 
@@ -4864,6 +5023,9 @@ policias.forEach((policia, index) => {
 `${index + 1}. ${policia}
 `
 })
+menuPolicias +=
+`
+x. Agregar nuevo servidor policial`
 
     estados[usuario] = {
         paso: 'nuevo_policia'
@@ -5290,6 +5452,7 @@ policias.forEach((policia, index) => {
     menuPolicias +=
 `${index + 1}. ${policia}
 `
+
 })
 
     estados[usuario]
@@ -5516,7 +5679,7 @@ await pausaHumana(sock, usuario)
                         usuario,
                         {
                             text:
-`Seleccione causa:
+`Seleccione la causa:
 
 a) Desalojo de vendedores
 b) Retiro temporal
@@ -5525,12 +5688,8 @@ d) Rondas disuasivas
 e) Punto martillo
 f) Colaboración con otras entidades
 g) Colaboración ciudadana
-h) Presencia de agente de control
-i) Accidente
-j) Permiso de ausentismo
-k) Persecución
-l) Requerimiento LINEA 181`
-                        }
+h) Accidente
+i) Permiso de ausentismo`                        }
                     )
 
                     return
@@ -5571,20 +5730,10 @@ const causas = {
 'Colaboración ciudadana',
 
     h:
-'Presencia de agente de control',
-
-    i:
 'Accidente',
 
-    j:
-'Permiso de ausentismo',
-
-    k:
-'Persecución',
-
-    l:
-'Requerimiento LINEA 181'
-
+    i:
+'Permiso de ausentismo'
 }
 
                     const causa =
@@ -5612,6 +5761,55 @@ await pausaHumana(sock, usuario)
                     guardarUsuarios(
                         usuarios
                     )
+
+//PERMISO DE AUSENTISMO
+
+if (mensaje === 'i') {
+
+    estados[usuario].paso =
+        'tipo_permiso_ausentismo'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Seleccione el tipo de permiso:
+
+a) Permiso por horas
+b) Permiso por días`
+        }
+    )
+
+    return
+}
+
+//COLABORACION CIUDADANA
+if (mensaje === 'g') {
+
+    estados[usuario].desdeColaboracionCiudadana =
+        true
+
+    estados[usuario].paso =
+        'inc_eas_menu'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`*COLABORACIÓN CIUDADANA*
+
+a) Denuncias Ciudadanas
+b) Requerimientos Ciudadanos
+c) Volver`
+        }
+    )
+
+    return
+}
 
                     // DESALOJO
 
@@ -5724,7 +5922,7 @@ f) Fuerzas Armadas`
 // ACCIDENTE
 // ======================
 
-if (mensaje === 'i') {
+if (mensaje === 'h') {
 
     estados[usuario].paso =
         'tipo_accidente'
@@ -5746,7 +5944,7 @@ d. Accidente entre vehículo y persona`
 
 }
 
-                    // OTRAS CAUSAS
+     // OTRAS CAUSAS
 
 let procedimientoFinal =
 `se procedió con ${causa}.`
@@ -5754,9 +5952,7 @@ let procedimientoFinal =
 // AGREGAR APOYO DISUASIVO
 if (
     mensaje === 'd' ||
-    mensaje === 'e' ||
-    mensaje === 'g' ||
-    mensaje === 'h'
+    mensaje === 'e' 
 ) {
 
     procedimientoFinal =
@@ -6140,6 +6336,500 @@ if (
 
     return
 }
+
+// ======================
+// MENU INCIDENCIAS EAS DESDE COLABORACION CIUDADANA
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'menu_incidencias_eas_colaboracion_ciudadana'
+) {
+
+    if (mensaje === 'a') {
+
+        estados[usuario].paso =
+            'incidencia_eas_denuncia'
+
+        estados[usuario].tipoIncidenciaEAS =
+            'Denuncias Ciudadanas'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Seleccione el tipo de denuncia ciudadana:
+
+a) Robo a mano armada
+b) Pérdida de bien inmueble
+c) Extorsión a local
+d) Amenazas
+e) Desaparición de persona`
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === 'b') {
+
+        estados[usuario].paso =
+            'incidencia_eas_requerimiento'
+
+        estados[usuario].tipoIncidenciaEAS =
+            'Requerimientos Ciudadanos'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Ingrese el nombre del ciudadano:`
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === 'c') {
+
+        estados[usuario].paso =
+            'causa'
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Seleccione la causa:
+
+a) Desalojo de vendedores
+b) Retiro temporal
+c) Requerimiento
+d) Rondas disuasivas
+e) Punto martillo
+f) Colaboración con otras entidades
+g) Colaboración ciudadana
+h) Accidente
+i) Permiso de ausentismo`
+            }
+        )
+
+        return
+    }
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Opción inválida.
+
+Colaboración ciudadana:
+
+a) Denuncias Ciudadanas
+b) Requerimientos Ciudadanos
+c) Volver`
+        }
+    )
+
+    return
+}
+
+// ======================
+// TIPO PERMISO AUSENTISMO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'tipo_permiso_ausentismo'
+) {
+
+    if (mensaje === 'a') {
+
+        estados[usuario].permisoAusentismo = {
+            tipo: 'horas'
+        }
+
+        estados[usuario].paso =
+            'permiso_hora_salida'
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Ingrese la hora de salida:'
+            }
+        )
+
+        return
+    }
+
+    if (mensaje === 'b') {
+
+        estados[usuario].permisoAusentismo = {
+            tipo: 'dias'
+        }
+
+        estados[usuario].paso =
+            'permiso_fecha_inicio'
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Ingrese la fecha de inicio del permiso:'
+            }
+        )
+
+        return
+    }
+
+    return
+}
+
+// ======================
+// PERMISO HORA SALIDA
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'permiso_hora_salida'
+) {
+
+    estados[usuario]
+        .permisoAusentismo
+        .horaSalida = text
+
+    estados[usuario].paso =
+        'permiso_hora_retorno'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Ingrese la hora de retorno:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// PERMISO HORA RETORNO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'permiso_hora_retorno'
+) {
+
+    estados[usuario]
+        .permisoAusentismo
+        .horaRetorno = text
+
+    estados[usuario].paso =
+        'motivo_permiso_ausentismo'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Motivo del permiso:
+
+a) Exámenes médicos
+b) Nacimiento
+c) Paternidad
+d) Maternidad
+e) Estudios
+f) Calamidad doméstica
+g) Otro`
+        }
+    )
+
+    return
+}
+
+// ======================
+// FECHA INICIO PERMISO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'permiso_fecha_inicio'
+) {
+
+    estados[usuario]
+        .permisoAusentismo
+        .fechaInicio = text
+
+    estados[usuario].paso =
+        'permiso_fecha_fin'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Ingrese la fecha de fin del permiso:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// FECHA FIN PERMISO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'permiso_fecha_fin'
+) {
+
+    estados[usuario]
+        .permisoAusentismo
+        .fechaFin = text
+
+    estados[usuario].paso =
+        'motivo_permiso_ausentismo'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`Motivo del permiso:
+
+a) Exámenes médicos
+b) Nacimiento
+c) Paternidad
+d) Maternidad
+e) Estudios
+f) Calamidad doméstica
+g) Otro`
+        }
+    )
+
+    return
+}
+
+// ======================
+// MOTIVO PERMISO AUSENTISMO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'motivo_permiso_ausentismo'
+) {
+
+    const motivos = {
+        a: 'permiso por exámenes médicos',
+        b: 'permiso por nacimiento',
+        c: 'permiso de paternidad',
+        d: 'permiso de maternidad',
+        e: 'permiso de estudios',
+        f: 'permiso por calamidad doméstica',
+        g: 'otro'
+    }
+
+    if (!motivos[mensaje]) {
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Opción inválida.
+
+Motivo del permiso:
+
+a) Exámenes médicos
+b) Nacimiento
+c) Paternidad
+d) Maternidad
+e) Estudios
+f) Calamidad doméstica
+g) Otro`
+            }
+        )
+
+        return
+    }
+
+    estados[usuario].permisoAusentismo.motivo =
+        motivos[mensaje]
+
+    if (
+        mensaje === 'f' ||
+        mensaje === 'g'
+    ) {
+
+        estados[usuario].paso =
+            'detalle_permiso_ausentismo'
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'Detalle la causa o motivo por el que se retira del servicio:'
+            }
+        )
+
+        return
+    }
+
+    estados[usuario].paso =
+        'lugar_permiso_ausentismo'
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+'Mencione el nombre del lugar hacia donde se dirige:'
+        }
+    )
+
+    return
+}
+
+// ======================
+// LUGAR PERMISO AUSENTISMO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'lugar_permiso_ausentismo'
+) {
+
+    const permiso =
+        estados[usuario].permisoAusentismo
+
+    let tiempoPermiso = ''
+
+    if (permiso.tipo === 'horas') {
+        tiempoPermiso =
+`desde las ${permiso.horaSalida} hasta las ${permiso.horaRetorno}`
+    }
+
+    if (permiso.tipo === 'dias') {
+        tiempoPermiso =
+`desde el ${permiso.fechaInicio} hasta el ${permiso.fechaFin}`
+    }
+
+    const accion =
+        permiso.tipo === 'horas'
+            ? 'me retiro temporalmente de mis funciones'
+            : 'me ausento temporalmente de mis funciones'
+
+const motivoTexto =
+    permiso.motivo === 'otro'
+        ? ''
+        : ` por ${permiso.motivo}`
+
+const procedimiento =
+`me permito informar que ${accion}${motivoTexto} ${tiempoPermiso}, trasladándome a ${text} para cumplir con la diligencia correspondiente.`
+
+    await generarCartilla(
+        sock,
+        usuario,
+        procedimiento
+    )
+
+    estados[usuario] = {
+        paso: 'otra_cartilla'
+    }
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Desea ingresar otra cartilla?
+
+1. SI
+2. NO`
+        }
+    )
+
+    return
+}
+
+// ======================
+// DETALLE PERMISO AUSENTISMO
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'detalle_permiso_ausentismo'
+) {
+
+    const permiso =
+        estados[usuario].permisoAusentismo
+
+    let tiempoPermiso = ''
+
+    if (permiso.tipo === 'horas') {
+        tiempoPermiso =
+`desde las ${permiso.horaSalida} hasta las ${permiso.horaRetorno}`
+    }
+
+    if (permiso.tipo === 'dias') {
+        tiempoPermiso =
+`desde el ${permiso.fechaInicio} hasta el ${permiso.fechaFin}`
+    }
+
+    const accion =
+        permiso.tipo === 'horas'
+            ? 'me retiro temporalmente de mis funciones'
+            : 'me ausento temporalmente de mis funciones'
+
+const motivoTexto =
+    permiso.motivo === 'otro'
+        ? ''
+        : ` por ${permiso.motivo}`
+
+const procedimiento =
+`me permito informar que ${accion}${motivoTexto} ${tiempoPermiso}, debido a ${text}.`
+
+    await generarCartilla(
+        sock,
+        usuario,
+        procedimiento
+    )
+
+    estados[usuario] = {
+        paso: 'otra_cartilla'
+    }
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(
+        usuario,
+        {
+            text:
+`¿Desea ingresar otra cartilla?
+
+1. SI
+2. NO`
+        }
+    )
+
+    return
+}
+
+
 
                 // ======================
                 // AGRESIVOS
@@ -6600,7 +7290,7 @@ await pausaHumana(sock, usuario)
             usuario,
             {
                 text:
-'Ingrese nombre de la ambulancia o unidad de emergencia'
+'Ingrese nombre del paramédico y Ambulancia que atendio al herido'
             }
         )
 
@@ -6764,46 +7454,74 @@ if (
     'traslado'
 ) {
 
-    usuarios[usuario] = {
-        ...usuarios[usuario],
-        traslado:
-            mensaje === '1'
-                ? 'Sí hubo traslado hospitalario'
-                : 'No hubo traslado hospitalario'
+    if (mensaje === '1') {
+
+        usuarios[usuario] = {
+            ...usuarios[usuario],
+            traslado:
+                'Sí hubo traslado hospitalario'
+        }
+
+        guardarUsuarios(usuarios)
+
+        estados[usuario].paso =
+            'casa_salud'
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+'¿A qué casa de salud fue trasladada la persona herida?'
+            }
+        )
+
+        return
     }
 
-    guardarUsuarios(usuarios)
+    if (mensaje === '2') {
 
-    const datos =
-        usuarios[usuario]
+        usuarios[usuario] = {
+            ...usuarios[usuario],
+            traslado:
+                'No hubo traslado hospitalario'
+        }
 
-    const procedimiento =
+        guardarUsuarios(usuarios)
+
+        const datos =
+            usuarios[usuario]
+
+        const procedimiento =
 `se registró ${datos.tipoAccidente}; ${datos.heridos}; ${datos.muertos || ''}; ${datos.criminalistica || ''}; ${datos.atm}; ${datos.ambulancia}; vehículos involucrados: ${datos.placas}; conductores: ${datos.conductores}; daños registrados: ${datos.danos}; ${datos.cierreVial}; ${datos.traslado}.`
 
-    await generarCartilla(
-        sock,
-        usuario,
-        procedimiento
-    )
+        await generarCartilla(
+            sock,
+            usuario,
+            procedimiento
+        )
 
-    estados[usuario] = {
-        paso: 'otra_cartilla'
-    }
-await pausaHumana(sock, usuario)
-    await sock.sendMessage(
-        usuario,
-        {
-            text:
+        estados[usuario] = {
+            paso: 'otra_cartilla'
+        }
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
 `¿Desea ingresar otra cartilla?
 
 1. SI
 2. NO`
-        }
-    )
+            }
+        )
 
-    return
+        return
+    }
 }
-
 // ======================
 // DATOS AMBULANCIA
 // ======================
