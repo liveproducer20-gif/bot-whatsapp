@@ -1,14 +1,13 @@
 {
   "codigos": {},
   "usados": [
-    "G0YZY"
+    "UQSB7"
   ],
-  "intentos": {},
+  "intentos": {
+    "status@broadcast": 2
+  },
   "bloqueados": {},
   "accesosTemporales": {
-    "196323676557477@lid": {
-      "inicio": 1781483264673,
-      "vence": 1781512064673
-    }
+    "196323676557477@lid": true
   }
 }
