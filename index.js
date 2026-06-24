@@ -324,7 +324,9 @@ function obtenerJornadaAutomatica() {
 
         return {
             jornada: 'MATUTINA',
-            horario: '06:00 A 14:30'
+            horario: '06:00 A 14:30',
+            entrada: '06:00',
+            salida: '14:30'
         }
     }
 
@@ -335,15 +337,20 @@ function obtenerJornadaAutomatica() {
 
         return {
             jornada: 'VESPERTINA',
-            horario: '14:00 A 22:30'
+            horario: '14:00 A 22:30',
+            entrada: '14:00',
+            salida: '22:30'
         }
     }
 
     return {
         jornada: 'AMANECIDA',
-        horario: '22:00 A 06:30'
+        horario: '22:00 A 06:30',
+        entrada: '22:00',
+        salida: '06:30'
     }
 }
+
 // ======================
 // GENERADOR CARTILLA
 // ======================
@@ -433,14 +440,18 @@ await pausaHumana(sock, usuario)
         return
     }
 
-
 const jornadaActual =
     obtenerJornadaAutomatica()
 
-    const causa =
-        tipo === 'entrante'
-            ? 'FORMACION ENTRANTE'
-            : 'FORMACION SALIENTE'
+const horaFormacion =
+    tipo === 'entrante'
+        ? jornadaActual.entrada
+        : jornadaActual.salida
+
+const causa =
+    tipo === 'entrante'
+        ? 'FORMACION ENTRANTE'
+        : 'FORMACION SALIENTE'
 
     const accion =
         tipo === 'entrante'
@@ -486,7 +497,7 @@ const bloquePolicia =
 *Circuito:* EAS 12 CEIBOS
 *Dirección:* Calle 15 ava y Dr Alberto Dacach Saman
 *Horario:* ${jornadaActual.horario}
-*Hora:* ${obtenerHoraMas5()}
+*Hora:* ${horaFormacion}
 *Fecha:* ${obtenerFecha()}
 *Causa:* ${causa}
 
@@ -3293,7 +3304,9 @@ await pausaHumana(sock, usuario)
 `Novedades de formación:
 
 a) Sin novedades
-b) Ingresar novedades`
+b) Novedades de Moviles
+c) Novedades del personal
+d) Continuar`
         }
     )
 
@@ -3315,7 +3328,9 @@ await pausaHumana(sock, usuario)
 `Novedades de formación:
 
 a) Sin novedades
-b) Ingresar novedades`
+b) Novedades de Moviles
+c) Novedades del personal
+d) Continuar`
         }
     )
 
@@ -3401,7 +3416,9 @@ await pausaHumana(sock, usuario)
 `Novedades de formación:
 
 a) Sin novedades
-b) Ingresar novedades`
+b) Novedades de Moviles
+c) Novedades del personal
+d) Continuar`
             }
         )
 
@@ -3423,7 +3440,9 @@ await pausaHumana(sock, usuario)
 `Novedades de formación:
 
 a) Sin novedades
-b) Ingresar novedades`
+b) Novedades de Moviles
+c) Novedades del personal
+d) Continuar`
             }
         )
 
@@ -4052,7 +4071,9 @@ await sock.sendMessage(
 `Novedades de formación:
 
 a) Sin novedades
-b) Ingresar novedades`
+b) Novedades de Moviles
+c) Novedades del personal
+d) Continuar`
     }
 )
 
@@ -4550,7 +4571,9 @@ await pausaHumana(sock, usuario)
 `Novedades de formación:
 
 a) Sin novedades
-b) Ingresar novedades`
+b) Novedades de Moviles
+c) Novedades del personal
+d) Continuar`
     }
 )
 
@@ -4660,7 +4683,10 @@ if (estados[usuario]?.paso === 'otra_novedad_movil') {
 
     if (mensaje === 'a') {
 
-        estados[usuario].paso = 'seleccionar_movil_novedad'
+        estados[usuario].paso =
+            'seleccionar_movil_novedad'
+
+        await pausaHumana(sock, usuario)
 
         await sock.sendMessage(usuario, {
             text:
@@ -4676,44 +4702,55 @@ c) Móvil 189`
 
     if (mensaje === 'b') {
 
-    const formaciones = cargarFormaciones()
+        const formaciones =
+            cargarFormaciones()
 
-    formaciones[usuario].novedadMoviles =
-        estados[usuario].novedadesMoviles
-            .map(n => `Móvil ${n.movil}: ${n.detalle}`)
-            .join('\n')
+        if (!formaciones[usuario]) {
+            formaciones[usuario] = {}
+        }
 
-    const movilesConNovedad =
-        estados[usuario].novedadesMoviles
-            .map(n => n.movil)
+        formaciones[usuario].novedadMoviles =
+            estados[usuario].novedadesMoviles
+                .map(n => `Móvil ${n.movil}: ${n.detalle}`)
+                .join('\n')
 
-    formaciones[usuario].moviles =
-        [
-            '187',
-            '188',
-            '189'
-        ].filter(
-            m => !movilesConNovedad.includes(m)
-        )
+        const movilesConNovedad =
+            estados[usuario].novedadesMoviles
+                .map(n => n.movil)
 
-    formaciones[usuario].novedades =
-        ''
+        formaciones[usuario].moviles =
+            [
+                '187',
+                '188',
+                '189'
+            ].filter(
+                m => !movilesConNovedad.includes(m)
+            )
 
-    guardarFormaciones(formaciones)
+        guardarFormaciones(formaciones)
 
-    await generarFormacion(
-        sock,
-        usuario,
-        estados[usuario].tipoFormacion
-    )
+        estados[usuario] = {
+            paso: 'otra_novedad_formacion',
+            tipoFormacion: estados[usuario].tipoFormacion
+        }
 
-    estados[usuario] = {
-        paso: 'datos_guardados_formacion',
-        tipoFormacion: estados[usuario].tipoFormacion
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(usuario, {
+            text:
+`Novedad de móvil registrada.
+
+¿Desea agregar otra novedad?
+
+a) Agregar novedad de móvil
+b) Agregar novedad del personal
+c) Continuar`
+        })
+
+        return
     }
 
-    return
-}
+    await pausaHumana(sock, usuario)
 
     await sock.sendMessage(usuario, {
         text:
@@ -4730,45 +4767,285 @@ b) No, continuar`
 // NOVEDADES FORMACION
 // ======================
 
-if (
-    estados[usuario]?.paso ===
-    'novedades_formacion'
-) {
+if (estados[usuario]?.paso === 'novedades_formacion') {
 
-    const formaciones =
-        cargarFormaciones()
+    const formaciones = cargarFormaciones()
+    const tipoFormacionActual = estados[usuario].tipoFormacion
 
-    const tipoFormacionActual =
-        estados[usuario].tipoFormacion
+    if (!formaciones[usuario]) {
+        formaciones[usuario] = {}
+    }
 
-    if (
-        mensaje === 'a' ||
-        mensaje === 'no'
-    ) {
+    // SIN NOVEDADES
+    if (mensaje === 'a' || mensaje === 'no') {
 
-        formaciones[usuario].novedades =
-            'Sin Novedades'
+        if (
+            !formaciones[usuario].novedades &&
+            !formaciones[usuario].novedadMoviles
+        ) {
+            formaciones[usuario].novedades = 'Sin Novedades'
+            guardarFormaciones(formaciones)
+        }
 
-        guardarFormaciones(
-            formaciones
-        )
-
-        await generarFormacion(
-            sock,
-            usuario,
-            tipoFormacionActual
-        )
+        await generarFormacion(sock, usuario, tipoFormacionActual)
 
         estados[usuario] = {
             paso: 'datos_guardados_formacion',
             tipoFormacion: tipoFormacionActual
         }
-await pausaHumana(sock, usuario)
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(usuario, {
+            text:
+`¿Qué desea hacer?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
+        })
+
+        return
+    }
+
+    // NOVEDADES DE MÓVIL
+    if (mensaje === 'b' || mensaje === 'si' || mensaje === 'sí') {
+
+        estados[usuario].paso = 'seleccionar_movil_novedad'
+        estados[usuario].novedadesMoviles = []
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(usuario, {
+            text:
+`Seleccione el móvil que tuvo novedad:
+
+a) Móvil 187
+b) Móvil 188
+c) Móvil 189`
+        })
+
+        return
+    }
+
+    // NOVEDADES DEL PERSONAL
+    if (mensaje === 'c') {
+
+        estados[usuario].paso = 'novedad_personal_formacion'
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(usuario, {
+            text:
+`Ingrese la novedad del personal:`
+        })
+
+        return
+    }
+
+    // CONTINUAR
+    if (mensaje === 'd') {
+
+        await generarFormacion(sock, usuario, tipoFormacionActual)
+
+        estados[usuario] = {
+            paso: 'datos_guardados_formacion',
+            tipoFormacion: tipoFormacionActual
+        }
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(usuario, {
+            text:
+`¿Qué desea hacer?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
+        })
+
+        return
+    }
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(usuario, {
+        text:
+`Opción inválida.
+
+a) Sin novedades
+b) Ingresar novedades de móvil
+c) Novedades del personal
+d) Continuar`
+    })
+
+    return
+}
+
+// ======================
+// CONFIRMAR NOVEDADES EXISTENTES
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'confirmar_novedades_existentes'
+) {
+
+    const formaciones =
+        cargarFormaciones()
+
+    if (!formaciones[usuario]) {
+        formaciones[usuario] = {}
+    }
+
+    // AGREGAR OTRA NOVEDAD
+    if (mensaje === 'a') {
+
+        if (estados[usuario].tipoNovedadPendiente === 'movil') {
+
+            estados[usuario].paso =
+                'seleccionar_movil_novedad'
+
+            estados[usuario].novedadesMoviles = []
+
+            await pausaHumana(sock, usuario)
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+`Seleccione el móvil que tuvo novedad:
+
+a) Móvil 187
+b) Móvil 188
+c) Móvil 189`
+                }
+            )
+
+            return
+        }
+
+        if (estados[usuario].tipoNovedadPendiente === 'personal') {
+
+            estados[usuario].paso =
+                'novedad_personal_formacion'
+
+            await pausaHumana(sock, usuario)
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+`Ingrese la novedad del personal:`
+                }
+            )
+
+            return
+        }
+    }
+
+    // SOBRESCRIBIR NOVEDADES
+    if (mensaje === 'b') {
+
+formaciones[usuario].novedades = ''
+formaciones[usuario].novedadMoviles = ''
+formaciones[usuario].moviles = ['187', '188', '189']
+
+
+        guardarFormaciones(formaciones)
+
+        if (estados[usuario].tipoNovedadPendiente === 'movil') {
+
+            estados[usuario].paso =
+                'seleccionar_movil_novedad'
+
+            estados[usuario].novedadesMoviles = []
+
+            await pausaHumana(sock, usuario)
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+`Seleccione el móvil que tuvo novedad:
+
+a) Móvil 187
+b) Móvil 188
+c) Móvil 189`
+                }
+            )
+
+            return
+        }
+
+        if (estados[usuario].tipoNovedadPendiente === 'personal') {
+
+            estados[usuario].paso =
+                'novedad_personal_formacion'
+
+            await pausaHumana(sock, usuario)
+
+            await sock.sendMessage(
+                usuario,
+                {
+                    text:
+`Ingrese la novedad del personal:`
+                }
+            )
+
+            return
+        }
+    }
+
+    // BORRAR NOVEDADES
+    if (mensaje === 'c') {
+
+        formaciones[usuario].novedades =
+            'Sin Novedades'
+
+        guardarFormaciones(formaciones)
+
+        await pausaHumana(sock, usuario)
+
         await sock.sendMessage(
             usuario,
             {
                 text:
-`¿Qué desea hacer?
+`Novedades anteriores borradas.
+
+¿Qué desea hacer?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
+            }
+        )
+
+        estados[usuario] = {
+            paso: 'datos_guardados_formacion'
+        }
+
+        return
+    }
+
+    // CANCELAR
+    if (mensaje === 'd') {
+
+        estados[usuario].paso =
+            'datos_guardados_formacion'
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(
+            usuario,
+            {
+                text:
+`Operación cancelada.
+
+¿Qué desea hacer?
 
 a) Formación Entrante
 b) Formación Saliente
@@ -4780,42 +5057,158 @@ d) Volver`
         return
     }
 
-    if (
-        mensaje === 'b' ||
-        mensaje === 'si' ||
-        mensaje === 'sí'
-    ) {
+    await pausaHumana(sock, usuario)
 
-estados[usuario].paso =
-    'seleccionar_movil_novedad'
-
-estados[usuario].novedadesMoviles = []
-
-await pausaHumana(sock, usuario)
-await sock.sendMessage(
-    usuario,
-    {
-        text:
-`Seleccione el móvil que tuvo novedad:
-
-a) Móvil 187
-b) Móvil 188
-c) Móvil 189`
-    }
-)
-        return
-    }
-await pausaHumana(sock, usuario)
     await sock.sendMessage(
         usuario,
         {
             text:
 `Opción inválida.
 
-a) Sin novedades
-b) Ingresar novedades`
+a) Agregar otra novedad
+b) Sobrescribir las novedades anteriores
+c) Borrar las novedades anteriores
+d) Cancelar`
         }
     )
+
+    return
+}
+
+// ======================
+// GUARDAR NOVEDAD PERSONAL FORMACION
+// ======================
+
+if (
+    estados[usuario]?.paso ===
+    'novedad_personal_formacion'
+) {
+
+    const formaciones =
+        cargarFormaciones()
+
+    if (!formaciones[usuario]) {
+        formaciones[usuario] = {}
+    }
+
+    const novedadPersonal =
+        `Novedad del personal: ${mensaje}`
+
+    if (
+        !formaciones[usuario].novedades ||
+        formaciones[usuario].novedades === '' ||
+        formaciones[usuario].novedades === 'Sin Novedades'
+    ) {
+        formaciones[usuario].novedades =
+            novedadPersonal
+    } else {
+        formaciones[usuario].novedades +=
+            `\n${novedadPersonal}`
+    }
+
+    guardarFormaciones(formaciones)
+
+   estados[usuario] = {
+    paso: 'otra_novedad_formacion',
+    tipoFormacion: estados[usuario].tipoFormacion
+}
+
+await pausaHumana(sock, usuario)
+
+await sock.sendMessage(usuario, {
+    text:
+`Novedad del personal registrada.
+
+¿Desea agregar otra novedad?
+
+a) Agregar novedad de Móvil
+b) Agregar novedad del Personal
+c) Continuar`
+})
+
+return
+}
+
+// ======================
+// OTRA NOVEDAD FORMACION
+// ======================
+
+if (estados[usuario]?.paso === 'otra_novedad_formacion') {
+
+    if (mensaje === 'a') {
+
+        estados[usuario].paso =
+            'seleccionar_movil_novedad'
+
+        estados[usuario].novedadesMoviles = []
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(usuario, {
+            text:
+`Seleccione el móvil que tuvo novedad:
+
+a) Móvil 187
+b) Móvil 188
+c) Móvil 189`
+        })
+
+        return
+    }
+
+    if (mensaje === 'b') {
+
+        estados[usuario].paso =
+            'novedad_personal_formacion'
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(usuario, {
+            text:
+`Ingrese la novedad del personal:`
+        })
+
+        return
+    }
+
+    if (mensaje === 'c') {
+
+        await generarFormacion(
+            sock,
+            usuario,
+            estados[usuario].tipoFormacion
+        )
+
+        estados[usuario] = {
+            paso: 'datos_guardados_formacion',
+            tipoFormacion: estados[usuario].tipoFormacion
+        }
+
+        await pausaHumana(sock, usuario)
+
+        await sock.sendMessage(usuario, {
+            text:
+`¿Qué desea hacer?
+
+a) Formación Entrante
+b) Formación Saliente
+c) Modificar datos
+d) Volver`
+        })
+
+        return
+    }
+
+    await pausaHumana(sock, usuario)
+
+    await sock.sendMessage(usuario, {
+        text:
+`Opción inválida.
+
+a) Agregar novedad de móvil
+b) Agregar novedad del personal
+c) Continuar`
+    })
 
     return
 }
